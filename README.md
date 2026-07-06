@@ -480,4 +480,460 @@ Leave all the weight as 1
 
 Save rules
   
-  
+
+Create Parameter Store Parameters
+
+Service URL Parameters\
+Systems Manager Console → Parameter Store → Create parameter
+
+User Service URL:\
+Name: /ecommerce/dev/user-service-url
+Type: String
+Value: http://<internal-alb-dns-name> (get from ALB details)
+Repeat for other services:
+
+/ecommerce/dev/cart-service-url → http://<internal-alb-dns-name>\
+/ecommerce/dev/product-service-url → http://<internal-alb-dns-name>\
+Note: All services use the same ALB DNS name. The ALB routes requests based on path.
+
+
+Create ECR Repositories:
+
+Create Repository for Product Service\
+ECR Console → Repositories → Create repository\
+Repository name: ecommerce/product-service\
+Create repository\
+Repeat the above steps for the remaining 3 services.\
+Validation Table\
+Create repositories for all services:
+
+Service	Repository Name\
+Product Service	ecommerce/product-service\
+Cart Service	   ecommerce/cart-service\
+User Service	   ecommerce/user-service\
+Order Service	   ecommerce/order-service\
+
+
+Build and Push Docker Images:\
+
+Note: Below CMDs need to be executed from the local machine (not from AWS console or EC2 instance).
+
+In the AWS console:
+
+Console: ECR Console → Repositories → Click any repository → Copy the URI (everything before the repository name)
+
+Build and Push Product Service Image:
+
+Get ECR login command:
+
+aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<your-region>.amazonaws.com
+
+
+Build the image:
+
+cd services/product-service
+docker build -t ecommerce/product-service .
+
+Tag the image:\
+docker tag ecommerce/product-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+
+Push the image:\
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+
+Build and Push other services
+
+Note: Make sure to change to each service directory before building.
+
+Cart Service:\
+cd ../cart-service  # Navigate to cart-service directory
+docker build -t ecommerce/cart-service .
+docker tag ecommerce/cart-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest
+
+User Service:\
+cd ../user-service  # Navigate to user-service directory
+docker build -t ecommerce/user-service .
+docker tag ecommerce/user-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest
+
+Order Service:\
+cd ../order-service  # Navigate to order-service directory
+docker build -t ecommerce/order-service .
+docker tag ecommerce/order-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest
+
+
+Create IAM Role for ECS Tasks
+
+Create ECS Task Role
+IAM Console → Roles → Create role
+Trusted entity type: AWS service
+Service: Elastic Container Service
+Use case: Elastic Container Service Task
+Next
+
+Attach permissions policies:
+
+6. Add the following AWS managed policies:
+
+AmazonDynamoDBFullAccess_v2 (use v2 for better security)\
+AmazonSSMReadOnlyAccess\
+CloudWatchLogsFullAccess\
+AmazonS3ReadOnlyAccess\
+AmazonSNSFullAccess\
+Role name: ecommerce-ecs-task-role\
+Create role
+
+Create ECS Security Group
+
+ECS Tasks Security Group\
+VPC Console → Security Groups → Create security group\
+Name: ecommerce-ecs-sg\
+Description: "Security group for ECS tasks"\
+VPC: Select ecommerce-vpc\
+Inbound rules:\
+Type: Custom TCP, Port: 8001, Source: ecommerce-alb-sg\
+Type: Custom TCP, Port: 8002, Source: ecommerce-alb-sg\
+Type: Custom TCP, Port: 8003, Source: ecommerce-alb-sg\
+Type: Custom TCP, Port: 8004, Source: ecommerce-alb-sg\
+Outbound rules: All traffic (default)\
+Create security group
+
+Create ECS Task Definitions\
+Create Task Definition for Product Service
+
+ECS Console → Task definitions → Create new task definition\
+Task definition family: ecommerce-product-service\
+Launch type: AWS Fargate\
+Operating system: Linux/X86_64\
+CPU: 1 vCPU\
+Memory: 3 GB\
+Task role: ecommerce-ecs-task-role\
+Task execution role: Create default role (This should create a role ecsTaskExecutionRole automatically which will be reused for other services.)
+
+Container definition:
+
+Container name: product-service
+
+Image URI: <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+
+Port mappings: Container port 8001, Protocol TCP
+
+Environment variables:\
+ENVIRONMENT = dev\
+AWS_REGION = <your-region>\
+Log configuration:
+
+Log driver: awslogs\
+Log group: /ecs/product-service\
+Region: <your-region>\
+Stream prefix: ecs
+
+Create task definition
+
+Repeat the above steps for the remaining 3 services, changing the port numbers and image URIs accordingly.
+
+Create task definitions for all services:
+
+Service	Task Definition	CPU	Memory	Port
+Product Service	ecommerce-product-service	1 vCPU	3 GB	8001
+Cart Service	   ecommerce-cart-service   	1 vCPU	3 GB	8002
+User Service	   ecommerce-user-service	   1 vCPU	3 GB	8003
+Order Service	   ecommerce-order-service	   1 vCPU	3 GB	8004
+
+Create ECS Cluster and Services
+
+Create ECS Cluster
+ECS Console → Clusters → Create cluster
+Cluster name: ecommerce-cluster
+Infrastructure: Fargate Only (serverless)
+Create cluster
+
+Create ECS Service for Product Service
+Go to cluster → Services → Create service
+Launch type: Fargate
+Task definition: ecommerce-product-service:1
+Service name: ecommerce-product-service
+Desired tasks: 1
+Networking - VPC: Web App-vpc
+Subnets: Select both private ECS subnets (deselect rest of the subnets if they are auto selected)
+Security group: ecommerce-ecs-sg
+Public IP: Turned off
+Load Balancing: Enable "Use load balancing"
+Load balancer type: Application Load Balancer
+Load balancer: ecommerce-internal-alb
+Target group: product-service-tg
+Create service
+Repeat the above steps for the remaining 3 services.
+
+Create services for all microservices:
+
+Service	             ECS Service Name	           Target Group     	Desired Tasks\
+Product Service	ecommerce-product-service  	product-service-tg      	1\
+Cart Service	   ecommerce-cart-service	        cart-service-tg	         1\
+User Service	   ecommerce-user-service	        user-service-tg	         1\
+Order Service	   ecommerce-order-service	        order-service-tg	      1
+
+Verify ECS Services
+
+Check Service Status\
+ECS Console → Clusters → ecommerce-cluster → Services\
+Verify that all 4 services show as below:\
+Status: Active\
+Running tasks: 1\
+Desired tasks: 1
+
+Check Target Group Health\
+EC2 Console -> Load Balancer → Target Groups\
+For each target group, verify:\
+Registered targets: 1\
+Health status: Healthy
+
+Test API Endpoints:
+
+Launch a Bastion Host for testing only as we can't directly access the internal ALB URL. We will terminate the instance after validation
+
+<img width="494" height="463" alt="image" src="https://github.com/user-attachments/assets/5070ca9a-31d4-4889-a092-1ef6e5061405" />
+
+Create Bastion Host:
+
+EC2 Console → Launch Instance\
+Name: web-app-bastion\
+AMI: Amazon Linux 2023\
+Instance type: t3.micro\
+Key pair: Select or create a key pair\
+Network settings:\
+VPC: Web App-vpc\
+Subnet: Select a public subnet\
+Auto-assign public IP: Enable\
+Security group: Create new\
+Name: ecommerce-bastion-sg\
+SSH (22) from your IP address\
+Launch instance
+
+
+Test API Endpoints:
+
+SSH into bastion host:\
+ssh -i your-key.pem ec2-user@<bastion-public-ip>
+
+Test product service:\
+curl http://<internal-alb-dns-name>/products
+
+At this point it should return the list of all the products.
+
+Stop or terminate the bastion host ec2 instance after validation. It is not required anymore.
+
+Troubleshooting Steps (If needed):
+
+Check CloudWatch Logs\
+If services are not starting properly, check the logs:
+
+CloudWatch Console → Log groups\
+Check these log groups:\
+/ecs/product-service\
+/ecs/cart-service\
+/ecs/user-service\
+/ecs/order-service\
+Service not starting:
+
+Check ECR image URI in task definition\
+Verify environment variables are set correctly
+
+Check IAM task role is assigned
+Health check failing:
+
+Verify /health endpoint exists in your service
+Check security group allows traffic on service ports
+Parameter Store access issues:
+
+Verify parameter names match exactly (case-sensitive)
+Check parameter exists in correct region
+
+
+API Gateway
+
+Create an HTTP API Gateway that connects to the internal Application Load Balancer, providing a public endpoint to access all microservices.
+
+Tasks:
+Create a VPC Link for API Gateway to connect privately to the internal ALB\
+Create HTTP API Gateway\
+Create HTTP proxy integration to internal ALB (VPC Resource) via VPCLink\
+Create Cognito JWT Authorizer for authentication\
+Create API routes\
+API CORS configuration for frontend access\
+API endpoint testing
+
+<img width="911" height="362" alt="image" src="https://github.com/user-attachments/assets/888580a9-fea5-431c-a9e8-44468f482841" />
+
+The API Gateway will have three specific routes:
+
+GET /products → Product Service (public, no auth)
+ANY /{proxy+} → All Services (authenticated, Cognito-authorizer required)
+OPTIONS /{proxy+} → CORS preflight (public, no auth)
+
+Create VPC Link
+
+Create Security Group for VPC Link
+
+VPC Console → Security Groups → Create security group
+Name: ecommerce-vpclink-sg
+Description: "Security group for VPC Link to ALB"
+VPC: Select ecommerce-vpc
+Inbound rules:
+Type: HTTP, Port: 80, Source: 0.0.0.0/0 (API Gateway traffic)
+Type: HTTPS, Port: 443, Source: 0.0.0.0/0 (API Gateway traffic)
+Outbound rules: All traffic (default)
+Create security group
+
+VPC Link Configuration
+API Gateway Console → VPC Links → Create VPC Link
+VPC Link version: VPC Link for HTTP APIs (v2)
+Name: ecommerce-vpc-link
+Description: "VPC Link for ecommerce internal ALB"
+VPC: Select Web App-vpc
+Subnets: Select both private ECS subnets:
+ecommerce-private-ecs-1
+ecommerce-private-ecs-2
+Security groups: Select ecommerce-vpclink-sg
+Create VPC Link
+
+VPC Link creation takes 5-10 minutes. Wait for status to become "Available" before proceeding.
+
+Create HTTP API Gateway
+
+API Gateway Configuration\
+API Gateway Console → APIs → Create API\
+Choose: HTTP API → Build\
+API name: ecommerce-api\
+Description: "eCommerce HTTP API"\
+Next\
+Skip adding integrations - we'll configure these manually\
+Create\
+Go to your API → Stages → Create stage\
+Stage name: $default\
+Enable Auto-deploy\
+Create
+
+Create HTTP Integration
+
+ALB Integration over VPCLink (VPC Private Resource integration)\
+Create one integration that will be used by all routes:\
+
+Go to your API → Develop → Integrations → Manage integrations → Create\
+Integration type: Private resource\
+Target service: ALB/NLB\
+Load balancer: Select Web App-alb\
+Listener: HTTP:80\
+VPC Link: Select ecommerce-vpc-link\
+Create integration
+
+Create Cognito JWT Authorizer
+
+Cognito JWT Authorizer Configuration
+Go to your API → Authorization → Authorizers → Create authorizer
+Name: cognito-jwt-authorizer
+Authorizer type: JWT
+Identity source: $request.header.Authorization
+Issuer URL: https://cognito-idp.<your-region>.amazonaws.com/<user-pool-id>
+Replace <your-region> and <user-pool-id> with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority
+Audience: <your-app-client-id>
+Use the App Client ID from Module 3
+Create authorizer
+
+
+Create API Routes
+
+Route 1: Public Products Route\
+Go to your API → Routes → Create route\
+Method: GET\
+Resource path: /products\
+Integration: Select the ALB Integration created above\
+Authorization: None\
+Create route
+
+Route 2: Authenticated Proxy Route\
+Create route\
+Method: ANY\
+Resource path: /{proxy+}\
+Integration: Select the ALB Integration created above\
+Authorization: JWT\
+Authorizer: Select cognito-jwt-authorizer\
+Create route
+
+Route 3: CORS Preflight Route\
+Create route\
+Method: OPTIONS\
+Resource path: /{proxy+}\
+Integration: Select the ALB Integration created above\
+Authorization: None\
+Create route
+
+Note:
+All three routes use the same ALB integration\
+/products is public (no authentication required)\
+/{proxy+} requires JWT authentication for all other endpoints\
+OPTIONS /{proxy+} handles CORS preflight requests without authentication
+
+Configure CORS:
+
+Go to your API → CORS → Configure\
+Access-Control-Allow-Origin: * (or specify your frontend domain)\
+Access-Control-Allow-Headers: * (allows all headers - recommended for development)\
+Access-Control-Allow-Methods:\
+GET,POST,PUT,DELETE,OPTIONS
+
+Save
+
+Note: Using * for Access-Control-Allow-Headers prevents CORS preflight issues with custom headers like Authorization tokens.
+
+Test API Gateway
+
+Get API Gateway URL\
+Go to your API → Stages → $default\
+Copy the Invoke URL (e.g., https://xxxxxxxxxx.execute-api.<region>.amazonaws.com)
+
+Test All Service Endpoints\
+Test Public Products Endpoint
+
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/products
+
+Test Authorized Endpoints (Should Return 401):
+
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/cart
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/users
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/orders
+# Expected: {"message":"Unauthorized"}
+
+
+Troubleshooting
+CORS Errors:
+
+If you see "Access-Control-Allow-Origin" errors, ensure CORS is configured with Access-Control-Allow-Headers: *
+Verify OPTIONS routes are created for preflight requests
+401 Unauthorized:
+
+Verify Cognito User Pool ID in authorizer configuration
+Ensure App Client ID matches in authorizer audience
+502 Bad Gateway:
+
+Check VPC Link status
+Verify internal ALB DNS name in integration URI
+Ensure ALB target groups are healthy
+504 Gateway Timeout:
+
+Check ECS service health
+Verify ALB listener rules are configured correctly
+Check VPCLink Security group (should allow HTTP/HTTPS from 0.0.0.0/0) and ALB Security group (should allow HTTP from VPC CIDR)
+
+We have configured:\
+Authentication: Public products endpoint, authenticated for other services\
+CORS Support: Dedicated OPTIONS route for preflight requests\
+Secure Connection: VPC Link ensures private communication between API gateway and ALB.\
+Flexible Access: Public product browsing, authenticated user actions
+
+Frontend-Backend Integration:
+
+
+
+
