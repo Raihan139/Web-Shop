@@ -934,6 +934,37 @@ Flexible Access: Public product browsing, authenticated user actions
 
 Frontend-Backend Integration:
 
+Now that the API Gateway is deployed, update the React application with the API Gateway URL, rebuild, and redeploy to S3. This completes the frontend integration and makes all features fully functional.
 
+Tasks:
+
+Update frontend with the API Gateway URL\
+Rebuild and redeploy frontend to S3\
+Invalidate CloudFront cache\
+Test the fully integrated application
+
+Update frontend with API Gateway URL
+
+Navigate to frontend directory:
+cd frontend/react-app
+
+Edit src/aws-config.js — update only the baseUrl field:
+
+const awsConfig = {
+  Auth: {
+    Cognito: {
+      userPoolId: '<COGNITO_USER_POOL_ID>',       // Already set in Module 3
+      userPoolClientId: '<COGNITO_CLIENT_ID>',    // Already set in Module 3
+      loginWith: {
+        email: true,
+      },
+    }
+  },
+  API: {
+    baseUrl: '<API_GATEWAY_URL>'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
+  }
+};
+
+export default awsConfig;
 
 
