@@ -545,7 +545,7 @@ Tag the image:\
 docker tag ecommerce/product-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
 
 Push the image:\
-docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+docker push (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
 
 Build and Push other services
 
