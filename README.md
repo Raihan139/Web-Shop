@@ -185,7 +185,8 @@ Steps:
   -Configure and Build React Application and Deploy to S3\
   -Test login/signup functionality
 
-  INSERT IMAGE HERE
+ <img width="881" height="417" alt="image" src="https://github.com/user-attachments/assets/ce2d70d4-fe9c-4d63-9c8b-21bf79f31de0" />
+
 
   S3 Bucket Configuration:\
   S3 Console → Buckets → Create bucket -> General Purpose\
