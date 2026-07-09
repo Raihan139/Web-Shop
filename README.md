@@ -496,8 +496,8 @@ Type: String\
 Value: http://<internal-alb-dns-name> (get from ALB details)\
 Repeat for other services:
 
-/ecommerce/dev/cart-service-url → http://<internal-alb-dns-name> \
-/ecommerce/dev/product-service-url → http://<internal-alb-dns-name> \
+/ecommerce/dev/cart-service-url → http://(internal-alb-dns-name) \
+/ecommerce/dev/product-service-url → http://(internal-alb-dns-name) \
 Note: All services use the same ALB DNS name. The ALB routes requests based on path.
 
 
