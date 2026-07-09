@@ -474,9 +474,9 @@ THEN: Forward to cart-service-tg
 
 User Service Rule:\
 IF: Path is /users*\
-THEN: Forward to user-service-tg\
-Order Service Rule:
+THEN: Forward to user-service-tg
 
+Order Service Rule:\
 IF: Path is /orders*\
 THEN: Forward to order-service-tg
 
