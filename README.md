@@ -671,16 +671,17 @@ Load Balancing: Enable "Use load balancing"\
 Load balancer type: Application Load Balancer\
 Load balancer: ecommerce-internal-alb\
 Target group: product-service-tg\
-Create service\
+Create service
+
 Repeat the above steps for the remaining 3 services.
 
 Create services for all microservices:
 
-Service	             ECS Service Name	           Target Group     	Desired Tasks\
-Product Service	ecommerce-product-service  	product-service-tg      	1\
-Cart Service	   ecommerce-cart-service	        cart-service-tg	         1\
-User Service	   ecommerce-user-service	        user-service-tg	         1\
-Order Service	   ecommerce-order-service	        order-service-tg	      1
+Service	   -----          ECS Service Name	   -----         Target Group   -----  	Desired Tasks\
+Product Service -----	ecommerce-product-service  -----	product-service-tg   -----   	1\
+Cart Service -----	   ecommerce-cart-service	 -----       cart-service-tg	  -----       1\
+User Service	-----   ecommerce-user-service	-----        user-service-tg	   -----      1\
+Order Service	-----   ecommerce-order-service	  -----      order-service-tg	   -----   1
 
 Verify ECS Services
 
