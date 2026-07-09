@@ -151,7 +151,7 @@ Steps:
   Options for sign-in identifiers: Select Email\
   Self-registration: Enable\
   Required attributes for sign-up: Select email and name\
-  Add a return URL: https://yourdomain.com (If you have a domain name, add here, else leave it blank)
+  Add a return URL: https://yourdomain.com (add domain name or else leave it blank)
   
   Click Create user directory
 
