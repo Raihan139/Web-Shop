@@ -514,11 +514,11 @@ Repeat the above steps for the remaining 3 services.
 Validation Table\
 Create repositories for all services:
 
-   Service	              Repository Name\
+   Service|	              |Repository Name\
 Product Service   -->	ecommerce/product-service\
 Cart Service	 -->     ecommerce/cart-service\
 User Service	  -->     ecommerce/user-service\
-Order Service	   -->    ecommerce/order-service\
+Order Service	   -->    ecommerce/order-service
 
 
 Build and Push Docker Images:
