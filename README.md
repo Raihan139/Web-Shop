@@ -967,4 +967,205 @@ const awsConfig = {
 
 export default awsConfig;
 
+Rebuild and redeploy frontend to S3:
+
+npm run build
+aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
+
+Next, Invalidate CloudFront Cache from AWS Console or using AWS CLI:
+
+Go to CloudFront Distribution -> Invalidations -> Create invalidation -> Object paths: /* -> Create invalidation
+
+Invalidation usually completes within 1 minute.
+
+
+Time to test the Fully Integrated Application:
+
+Open your CloudFront URL in a browser:
+
+https://<your-cloudfront-domain>
+
+Do  a test and see if the sign in, product listing, adding to cart, placing an order, order history etc. works.
+
+
+Notification and Integration (SNS and SQS):
+
+Set up event driven flows using Amazon SNS and SQS for order notifications and integration with 3rd party vendors.
+
+Note:
+
+Ideally for the email notification we should use Amazon SES (Simple Email Service) where we have the Lambda function subscription for SNS topic and Lambda triggers an email to the email id from the order event using SES. However by default SES service is in Sandbox mode in AWS account and it applies restriction on sending emails from un-verified sender. We have to ask AWS to move SES service out of SandBox and enable it for the Production use and this may take few days. Hence, we are going to send email directly to fixed email id using the Amazon SNS.
+
+Architecture:
+
+<img width="613" height="301" alt="image" src="https://github.com/user-attachments/assets/cf57c4a3-6643-464a-a9c9-e78ca9a92231" />
+
+Create SNS Topic
+
+SNS Topic Configuration\
+SNS Console → Topics → Create topic\
+Type: Standard\
+Name: ecommerce-order-events\
+Display name: eCommerce Order Events\
+Create topic\
+Note Topic ARN\
+Copy the Topic ARN (e.g., arn:aws:sns:<region>:<account-id>:ecommerce-order-events)\
+Save this ARN - we'll use it in Parameter Store
+
+Create SQS Queue for Logging:
+
+SQS Queue Configuration\
+SQS Console → Queues → Create queue\
+Type: Standard queue\
+Name: ecommerce-order-shipping\
+Create queue
+
+
+Configure SNS Subscriptions
+
+Email Subscription\
+Go to SNS topic → Subscriptions → Create subscription\
+Topic ARN: Select ecommerce-order-events\
+Protocol: Email\
+Endpoint: Enter your email address (e.g., admin@yourdomain.com)\
+Create subscription\
+Check your email for confirmation message\
+Click "Confirm subscription" link in the email\
+Verify status shows "Confirmed" in SNS console\
+SQS Subscription for Shipping\
+Create subscription\
+Topic ARN: Select ecommerce-order-events\
+Protocol: Amazon SQS\
+Endpoint: Enter the SQS queue ARN from step 7.2\
+Create subscription\
+Verify status shows "Confirmed"\
+This should automatically update the SQS queue Policy to allow SQS:SendMessage action for SNS Topic.
+
+Go to SQS Queue -> Queue Policies and Verify.
+
+Subscription Summary\
+You now have two subscriptions:
+
+Email: Direct notifications to your email\
+SQS: Message for shipping vendor
+
+Update Parameter Store
+
+SNS Topic ARN Parameter\
+Systems Manager Console → Parameter Store → Create parameter\
+Name: /ecommerce/dev/sns/topic-arn\
+Type: String\
+Value: arn:aws:sns:<region>:<account-id>:ecommerce-order-events\
+Create parameter
+
+This parameter is already created and used by the order service to publish messages to SNS.
+
+Restart the Order Service to fetch SNS Topic ARN
+
+ECS Cluster -> Services -> Order Service -> Force new deployment\
+Wait until Order Service status changes to 1 Task Running\
+This will make sure that Order Service fetches SNS Topic ARN from SSM Parameter Store and publishes order event on to the topic.
+
+Test Notification Workflow
+
+Place an order through the frontend\
+Order service publishes to SNS topic\
+SNS sends email Check email for order notification\
+SNS also sends message to SQS queue for shipping. Verify messages in the SQS queue -> Send and receive message -> Poll for messages
+
+Custom Domain & SSL:
+
+Access application using Custom domain name and enable HTTPS with SSL certificate
+
+<img width="870" height="396" alt="image" src="https://github.com/user-attachments/assets/97e3b5ba-0ea2-4cc2-9568-30713467c416" />
+
+Prerequisites:
+
+A registered public domain name (can be registered via Route53 or use existing one).\
+Amazon Route 53 should be configured as DNS provider for the domain name.
+
+Route 53 Public Hosted Zone (pre-requisite)
+
+Route53 Console → Hosted zones → Create hosted zone\
+Domain name: yourdomain.com\
+Type: Public hosted zone\
+Create\
+Note the 4 nameservers (NS records)\
+Update nameservers at your domain registrar
+
+
+Request SSL Certificate in ACM:
+
+Request Certificate\
+Go to ACM Console → Switch to us-east-1 region\
+Request certificate → Request a public certificate\
+Domain names:\
+yourdomain.com\
+www.yourdomain.com\
+*.yourdomain.com (optional, for subdomains)\
+Validation method: DNS validation\
+Request\
+Validate Certificate\
+In ACM, click on your certificate\
+Click "Create records in Route53" button\
+This automatically adds CNAME records to your hosted zone\
+Wait for validation (usually 1-2 minutes)\
+Status should change to "Issued"
+
+
+Add alternate domain name for CloudFront Distribution:
+
+CloudFront Console → Your distribution → Edit
+Settings:\
+Alternate domain names (CNAMEs): Add yourdomain.com and www.yourdomain.com\
+Custom SSL certificate: Select your ACM certificate\
+Save changes\
+Wait for deployment (5-10 minutes)
+
+Create Route53 Records:
+
+A Record for Top level domain:
+
+Route53 → Hosted zones → Your domain
+Create record:\
+Record name: Leave empty (root domain)\
+Record type: A\
+Alias: Yes\
+Route traffic to: Alias to CloudFront distribution\
+Choose distribution: Select your CloudFront distribution\
+Routing policy: Simple routing\
+Create record\
+A Record for www:
+
+Create record:\
+Record name: www\
+Record type: A\
+Alias: Yes\
+Route traffic to: Alias to CloudFront distribution\
+Choose distribution: Select your CloudFront distribution\
+Create record
+
+Update Cognito Callback URLs:
+
+Cognito Console → User pools → your user pool\
+App integration → App client → Edit
+
+Hosted UI settings:
+Add callback URLs: https://yourdomain.com, https://www.yourdomain.com\
+Add sign-out URLs: https://yourdomain.com, https://www.yourdomain.com\
+Save
+
+Finally, test the Application with Custom Domain:
+
+Open browser: https://yourdomain.com\
+Verify SSL certificate: Should show secure/valid certificate (green lock icon)
+
+Test all the website functionalities:\
+Browse products (should load from API)\
+Sign in/Sign up (Cognito authentication)\
+Add items to cart\
+Place test order\
+Check that all features work
+
+At this point, a production-ready ecommerce application on AWS with custom domain and SSL certificate should be successfully deployed.
 
