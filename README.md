@@ -916,22 +916,22 @@ curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/orders\
 # Expected: {"message":"Unauthorized"}
 
 
-Troubleshooting\
-CORS Errors:
+Troubleshooting:
 
+CORS Errors:\
 If you see "Access-Control-Allow-Origin" errors, ensure CORS is configured with Access-Control-Allow-Headers: *\
 Verify OPTIONS routes are created for preflight requests\
-401 Unauthorized:
 
+401 Unauthorized:\
 Verify Cognito User Pool ID in authorizer configuration\
-Ensure App Client ID matches in authorizer audience\
-502 Bad Gateway:
+Ensure App Client ID matches in authorizer audience
 
+502 Bad Gateway:\
 Check VPC Link status\
 Verify internal ALB DNS name in integration URI\
-Ensure ALB target groups are healthy\
-504 Gateway Timeout:
+Ensure ALB target groups are healthy
 
+504 Gateway Timeout:\
 Check ECS service health\
 Verify ALB listener rules are configured correctly\
 Check VPCLink Security group (should allow HTTP/HTTPS from 0.0.0.0/0) and ALB Security group (should allow HTTP from VPC CIDR)
