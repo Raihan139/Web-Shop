@@ -581,7 +581,7 @@ Next
 
 Attach permissions policies:
 
-6. Add the following AWS managed policies:
+Add the following AWS managed policies:
 
 AmazonDynamoDBFullAccess_v2 (use v2 for better security)\
 AmazonSSMReadOnlyAccess\
@@ -606,8 +606,9 @@ Type: Custom TCP, Port: 8004, Source: ecommerce-alb-sg\
 Outbound rules: All traffic (default)\
 Create security group
 
-Create ECS Task Definitions\
-Create Task Definition for Product Service
+Create ECS Task Definitions:\
+
+Create Task Definition for Product Service:
 
 ECS Console → Task definitions → Create new task definition\
 Task definition family: ecommerce-product-service\
@@ -622,18 +623,18 @@ Container definition:
 
 Container name: product-service
 
-Image URI: <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+Image URI: (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
 
 Port mappings: Container port 8001, Protocol TCP
 
 Environment variables:\
 ENVIRONMENT = dev\
-AWS_REGION = <your-region>\
+AWS_REGION = (your-region)\
 Log configuration:
 
 Log driver: awslogs\
 Log group: /ecs/product-service\
-Region: <your-region>\
+Region: (your-region)\
 Stream prefix: ecs
 
 Create task definition
@@ -642,11 +643,11 @@ Repeat the above steps for the remaining 3 services, changing the port numbers a
 
 Create task definitions for all services:
 
-Service	               Task Definition	     CPU   Memory	Port\
-Product Service	ecommerce-product-service	1 vCPU	3 GB	8001\
-Cart Service	   ecommerce-cart-service   	1 vCPU	3 GB	8002\
-User Service	   ecommerce-user-service	   1 vCPU	3 GB	8003\
-Order Service	   ecommerce-order-service	   1 vCPU	3 GB	8004
+Service	    ------   Task Definition	-----   CPU -----  Memory -----	Port\
+Product Service ------	ecommerce-product-service ------	1 vCPU ------	3 GB ------	8001\
+Cart Service	------   ecommerce-cart-service ------  	1 vCPU ------	3 GB ------	8002\
+User Service ------	   ecommerce-user-service ------	   1 vCPU ------	3 GB ------	8003\
+Order Service ------	   ecommerce-order-service	------   1 vCPU ------	3 GB ------	8004
 
 Create ECS Cluster and Services
 
