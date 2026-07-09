@@ -191,7 +191,7 @@ Steps:
   S3 Bucket Configuration:\
   S3 Console → Buckets → Create bucket -> General Purpose\
   Bucket name: web-app-bucket19 (must be unique)\
-  Region: us-east-1 or your region (Make sure you are in the right AWS region for S3 console)\
+  Region: us-east-1 or your region (Ensure you're in the right AWS region for S3 console)\
   Block all public access: Keep checked (CloudFront will access this bucket privately)\
   Bucket versioning: Disable\
   Encryption: Default - Enable (SSE-S3)\
@@ -223,7 +223,7 @@ Steps:
   Save these values:
 
   CloudFront Distribution ID (e.g., E30JU8N49IUDRS)\
-  CloudFront Domain Name (e.g., d1234567890.cloudfront.net
+  CloudFront Domain Name (e.g., d1234567890.cloudfront.net)
 
 
   Configure and Build React Application and Deploy to S3:
@@ -233,19 +233,19 @@ Steps:
 
   Next, edit src/aws-config.js and replace the user pool and cognito client ID values copied earlier:
 
-      const awsConfig = {\
-        Auth: {\
-          Cognito: {\
-            userPoolId: '<COGNITO_USER_POOL_ID>',       // e.g., ap-south-1_xxxxxxxxx\
-            userPoolClientId: '<COGNITO_CLIENT_ID>',    // e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m\
-            loginWith: {\
-              email: true,\
-            },\
-          }\
-        },\
-        API: {\
-          baseUrl: ''  // Leave empty for now — will be updated in Module 7\
-        }\
+      const awsConfig = {
+        Auth: {
+          Cognito: {
+            userPoolId: '<COGNITO_USER_POOL_ID>',       // e.g., ap-south-1_xxxxxxxxx
+            userPoolClientId: '<COGNITO_CLIENT_ID>',    // e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m
+            loginWith: {
+              email: true,
+            },
+          }
+        },
+        API: {
+          baseUrl: ''  // Leave empty for now — will be updated in Module 7
+        }
       };
       
       export default awsConfig;
@@ -350,7 +350,9 @@ RDS Console → Databases → Create database\
 Engine options:\
 Engine type: PostgreSQL\
 Choose a database creation method: Full configuration\
-Templates: Free Tier or Dev/Test
+Templates: Free Tier
+Availability and durability: Single-AZ DB instance deployment (1 instance)
+Engine version: PostgreSQL 18.3R1
 
 Settings:\
   DB instance identifier: ecommercedb-instance\
