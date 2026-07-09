@@ -844,8 +844,8 @@ Go to your API → Authorization → Authorizers → Create authorizer\
 Name: cognito-jwt-authorizer\
 Authorizer type: JWT\
 Identity source: $request.header.Authorization\
-Issuer URL: https://cognito-idp.<your-region>.amazonaws.com/<user-pool-id>\
-Replace <your-region> and <user-pool-id> with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority\
+Issuer URL: https://cognito-idp.(your-region).amazonaws.com/(user-pool-id)\
+Replace (your-region) and (user-pool-id) with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority\
 Audience: <your-app-client-id>\
 Use the App Client ID from Module 3\
 Create authorizer
@@ -900,18 +900,19 @@ Test API Gateway
 
 Get API Gateway URL\
 Go to your API → Stages → $default\
-Copy the Invoke URL (e.g., https://xxxxxxxxxx.execute-api.<region>.amazonaws.com)
+Copy the Invoke URL (e.g., https://xxxxxxxxxx.execute-api.(region).amazonaws.com)
 
-Test All Service Endpoints\
+Test All Service Endpoints
+
 Test Public Products Endpoint
 
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/products
+curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/products
 
 Test Authorized Endpoints (Should Return 401):
 
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/cart\
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/users\
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/orders\
+curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/cart\
+curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/users\
+curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/orders\
 # Expected: {"message":"Unauthorized"}
 
 
