@@ -38,7 +38,7 @@ Steps:
    docker --version\
    node --version\
    npm --version\
-   git --version\
+   git --version
 
 3. Install and configure AWS CLI on your machine\
    Check AWS website for instructions on installing and configuring AWS CLI
@@ -57,7 +57,8 @@ Steps:
    NAT Gateway - Internet access for private subnets\
    Route Tables - Traffic routing configuration
 
-   Insert image here
+<img width="892" height="417" alt="image" src="https://github.com/user-attachments/assets/947e189d-060c-46a4-a77a-fa2e14b8cd7b" />
+
 
    Steps:
 
