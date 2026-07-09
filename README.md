@@ -724,10 +724,10 @@ Launch instance
 Test API Endpoints:
 
 SSH into bastion host:\
-ssh -i your-key.pem ec2-user@<bastion-public-ip>
+ssh -i your-key.pem ec2-user@(bastion-public-ip)
 
 Test product service:\
-curl http://<internal-alb-dns-name>/products
+curl http://(internal-alb-dns-name)/products
 
 At this point it should return the list of all the products.
 
