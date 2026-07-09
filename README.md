@@ -1,5 +1,5 @@
 # Web-Shop
-Online Electronics Store
+Online Electronics Store\
 This is a fully functioning online e-commerce electronics store built using several different AWS services.
 
 This project illustrates a cloud-native services based application which has a Frontend layer, Backend layer, Database layer, Access Layer and Integration layer.
@@ -19,7 +19,7 @@ Databases --> DynamoDB and RDS PostgreSQL\
 Messaging --> SNS, SQS, and SES\
 Networking --> VPC, Subnets, Security Groups, and NAT Gateway\
 Logs and Management --> CloudWatch and Systems Manager\
-Security --> IAM\
+Security --> IAM
 
 
 Prerequisites: Ubuntu, AWS CLI, Docker, Git, Node.js
@@ -41,13 +41,13 @@ Steps:
    git --version\
 
 3. Install and configure AWS CLI on your machine\
-   Check AWS website for instructions on installing and configuring AWS CLI\
+   Check AWS website for instructions on installing and configuring AWS CLI
 
-4. Networking:\
+4. Networking:
 
-   Create the VPC infrastructure with public and private subnets across 2 availability zones (AZ)\
+   Create the VPC infrastructure with public and private subnets across 2 availability zones (AZ)
 
-   Note: Choose your AWS region\
+   Note: Choose your AWS region
 
    VPC - CIDR 10.10.0.0/16\
    Public Subnets - 2 subnets for NAT Gateway and Bastion host\
@@ -55,47 +55,47 @@ Steps:
    Private Database (DB) Subnets - 2 subnets for RDS instances\
    Internet Gateway - Internet access for public subnets\
    NAT Gateway - Internet access for private subnets\
-   Route Tables - Traffic routing configuration\
+   Route Tables - Traffic routing configuration
 
-   Insert image here\
+   Insert image here
 
-   Steps:\
+   Steps:
 
-   VPC:\
+   VPC:
 
-   VPC Console → Your VPCs → Create VPC
-   Name: Web App-vpc
-   IPv4 CIDR block: 10.10.0.0/16
-   Tenancy: Default
+   VPC Console → Your VPCs → Create VPC\
+   Name: Web App-vpc\
+   IPv4 CIDR block: 10.10.0.0/16\
+   Tenancy: Default\
    Create VPC
 
-   Internet Gateway:\
+   Internet Gateway:
 
-   VPC Console → Internet Gateways → Create internet gateway
-   Name: Web App IGW
-   Create internet gateway
-   Actions → Attach to VPC
-   Select: Web App-vpc
+   VPC Console → Internet Gateways → Create internet gateway\
+   Name: Web App IGW\
+   Create internet gateway\
+   Actions → Attach to VPC\
+   Select: Web App-vpc\
    Attach internet gateway
 
-   Subnets:\
+   Subnets:
    
    Public Subnet 1:
 
-    VPC Console → Subnets → Create subnet
-    VPC: Web App-vpc
-    Name: Web App-subnet-public-1
-    Availability Zone: us-east-1a
-    IPv4 CIDR block: 10.10.0.0/24
+    VPC Console → Subnets → Create subnet\
+    VPC: Web App-vpc\
+    Name: Web App-subnet-public-1\
+    Availability Zone: us-east-1a\
+    IPv4 CIDR block: 10.10.0.0/24\
     Create subnet
 
-    Repeat for the rest of the subnets below:\
+    Repeat for the rest of the subnets below:
 
-    Public	    Web App-subnet-public2	     CIDR 10.10.1.0/24	Region us-east-1a	 Purpose --> NAT Gateway, Bastion host (For HA setup if required)\
-    Private ECS	Web App-subnet-ecs-private1  CIDR	10.10.10.0/24	Region us-east-1a	 Purpose --> ECS Services, Internal ALB, APIGW VPCLink\
+    Public	      Web App-subnet-public2	       CIDR 10.10.1.0/24	Region us-east-1a	 Purpose --> NAT Gateway, Bastion host (For HA setup if required)\
+    Private ECS	Web App-subnet-ecs-private1    CIDR	10.10.10.0/24	Region us-east-1a	 Purpose --> ECS Services, Internal ALB, APIGW VPCLink\
     Private ECS	Web App-subnet-ecs-private2	 CIDR 10.10.11.0/24	Region us-east-1a	 Purpose --> ECS Services, Internal ALB, APIGW VPCLink\
-    Private DB	Web App-subnet-db-private3	 CIDR 10.10.20.0/24	Region us-east-1a	 Purpose --> RDS Primary\
-    Private DB	Web App-subnet-db-private4	 CIDR 10.10.21.0/24	Region us-east-1a	 Purpose --> RDS Standby (For HA setup if required)
+    Private DB	   Web App-subnet-db-private3	    CIDR 10.10.20.0/24	Region us-east-1a	 Purpose --> RDS Primary\
+    Private DB	   Web App-subnet-db-private4	    CIDR 10.10.21.0/24	Region us-east-1a	 Purpose --> RDS Standby (For HA setup if required)
 
 
   NAT Gateway:
@@ -124,13 +124,13 @@ Steps:
   
   Create route table: Web App Pvt RT\
   Add route: 0.0.0.0/0 → NAT Gateway\
-  Associate: Both private ECS subnets\
+  Associate: Both private ECS subnets
   
   Private Database Route Table:
   
   Create route table: Web App DB Pvt RT\
   No new route required\
-  Associate: Both private database subnets\
+  Associate: Both private database subnets
 
 
   Authentication:
@@ -147,9 +147,9 @@ Steps:
   
   Configure options:
   
-  Options for sign-in identifiers: Select Email
-  Self-registration: Enable
-  Required attributes for sign-up: Select email and name
+  Options for sign-in identifiers: Select Email\
+  Self-registration: Enable\
+  Required attributes for sign-up: Select email and name\
   Add a return URL: https://yourdomain.com (If you have a domain name, add here, else leave it blank)
   
   Click Create user directory
@@ -157,12 +157,12 @@ Steps:
 
   Configure Cognito User Pool App Client:
 
-  Go to your new User Pool → App integration tab → App clients
-  Click on your app client name and Edit
-  Under Authentication flows, enable:
-  ALLOW_USER_PASSWORD_AUTH
-  ALLOW_USER_SRP_AUTH
-  ALLOW_REFRESH_TOKEN_AUTH
+  Go to your new User Pool → App integration tab → App clients\
+  Click on your app client name and Edit\
+  Under Authentication flows, enable:\
+  ALLOW_USER_PASSWORD_AUTH\
+  ALLOW_USER_SRP_AUTH\
+  ALLOW_REFRESH_TOKEN_AUTH\
   Click Save changes
 
 
@@ -170,18 +170,18 @@ Steps:
 
   User Pool ID (e.g., us-east-1_xxxxxxxxx)\
   App Client ID (e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m)\
-  Cognito Domain (User Pool -> Branding -> Domain)\
+  Cognito Domain (User Pool -> Branding -> Domain)
 
 
   Frontend Deployment:
 
   Set up the infrastructure for the React frontend, configure it with Cognito values, deploy it to S3 and access it through CloudFront. This allows to test login/signup functionality early.
 
-  Tasks:
-  -Create S3 bucket for hosting frontend build assets
-  -Create CloudFront distribution with S3 origin
-  -Configure CloudFront Root document and Custom Error Pages
-  -Configure and Build React Application and Deploy to S3
+  Tasks:\
+  -Create S3 bucket for hosting frontend build assets\
+  -Create CloudFront distribution with S3 origin\
+  -Configure CloudFront Root document and Custom Error Pages\
+  -Configure and Build React Application and Deploy to S3\
   -Test login/signup functionality
 
   INSERT IMAGE HERE
@@ -221,7 +221,7 @@ Steps:
   Save these values:
 
   CloudFront Distribution ID (e.g., E30JU8N49IUDRS)\
-  CloudFront Domain Name (e.g., d1234567890.cloudfront.net\
+  CloudFront Domain Name (e.g., d1234567890.cloudfront.net
 
 
   Configure and Build React Application and Deploy to S3:
@@ -231,26 +231,26 @@ Steps:
 
   Next, edit src/aws-config.js and replace the user pool and cognito client ID values copied earlier:
 
-      const awsConfig = {
-        Auth: {
-          Cognito: {
-            userPoolId: '<COGNITO_USER_POOL_ID>',       // e.g., ap-south-1_xxxxxxxxx
-            userPoolClientId: '<COGNITO_CLIENT_ID>',    // e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m
-            loginWith: {
-              email: true,
-            },
-          }
-        },
-        API: {
-          baseUrl: ''  // Leave empty for now — will be updated in Module 7
-        }
+      const awsConfig = {\
+        Auth: {\
+          Cognito: {\
+            userPoolId: '<COGNITO_USER_POOL_ID>',       // e.g., ap-south-1_xxxxxxxxx\
+            userPoolClientId: '<COGNITO_CLIENT_ID>',    // e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m\
+            loginWith: {\
+              email: true,\
+            },\
+          }\
+        },\
+        API: {\
+          baseUrl: ''  // Leave empty for now — will be updated in Module 7\
+        }\
       };
       
       export default awsConfig;
 
   Build and Deploy React frontend:
 
-  Install dependencies:
+  Install dependencies:\
   npm install\
   npm build
 
@@ -258,13 +258,13 @@ Steps:
 
   aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
 
-  Update Cognito Callback URL\
+  Update Cognito Callback URL
   
-  Cognito Console → User pools → Web App User Pool
-  App integration tab → App clients → Click your app client
-  Edit Login pages settings:
-  Allowed callback URLs: Add https://<your-cloudfront-domain>
-  Allowed sign-out URLs: Add https://<your-cloudfront-domain>
+  Cognito Console → User pools → Web App User Pool\
+  App integration tab → App clients → Click your app client\
+  Edit Login pages settings:\
+  Allowed callback URLs: Add https://<your-cloudfront-domain>\
+  Allowed sign-out URLs: Add https://<your-cloudfront-domain>\
   Save changes
 
 
@@ -285,23 +285,23 @@ Steps:
 
   DynamoDB:
 
-  Create Products Table
-  DynamoDB Console → Tables → Create table
-  Table name: ecommerce-products
-  Partition key: product_id (String)
-  Sort key: Leave empty (no sort key needed)
-  Table class: DynamoDB Standard
-  Capacity mode: On-demand
+  Create Products Table\
+  DynamoDB Console → Tables → Create table\
+  Table name: ecommerce-products\
+  Partition key: product_id (String)\
+  Sort key: Leave empty (no sort key needed)\
+  Table class: DynamoDB Standard\
+  Capacity mode: On-demand\
   Create table
 
 
-  Create Cart Table
-  DynamoDB Console → Tables → Create table
-  Table name: ecommerce-cart
-  Partition key: user_id (String)
-  Sort key: Leave empty (no sort key needed)
-  Table class: DynamoDB Standard
-  Capacity mode: On-demand
+  Create Cart Table\
+  DynamoDB Console → Tables → Create table\
+  Table name: ecommerce-cart\
+  Partition key: user_id (String)\
+  Sort key: Leave empty (no sort key needed)\
+  Table class: DynamoDB Standard\
+  Capacity mode: On-demand\
   Create table
 
 
@@ -318,27 +318,27 @@ Steps:
 
   RDS - PostgreSQL Database:
 
-  Create DB Subnet Group
-  RDS Console → Subnet groups → Create DB subnet group
-  Name: ecommerce-db
-  Description: "Subnet group for web app RDS"
-  VPC: Select Web App-vpc
-  Add subnets:
-  Select both availability zones (us-east-1a, us-east-1b)
+  Create DB Subnet Group\
+  RDS Console → Subnet groups → Create DB subnet group\
+  Name: ecommerce-db\
+  Description: "Subnet group for web app RDS"\
+  VPC: Select Web App-vpc\
+  Add subnets:\
+  Select both availability zones (us-east-1a, us-east-1b)\
   Select both private database subnets
   Create
 
-  Create Security Group for RDS
-  VPC Console → Security Groups → Create security group
-  Name: ecommerce-rds-sg
-  Description: "Security group for RDS PostgreSQL"
-  VPC: Select Web App-vpc
-  Inbound rules:
-  Type: PostgreSQL
-  Port: 5432
-  Source: Custom - 10.10.0.0/16 (VPC CIDR)
-  Description: "Allow PostgreSQL from VPC"
-  Outbound rules: Keep default (all traffic)
+  Create Security Group for RDS\
+  VPC Console → Security Groups → Create security group\
+  Name: ecommerce-rds-sg\
+  Description: "Security group for RDS PostgreSQL"\
+  VPC: Select Web App-vpc\
+  Inbound rules:\
+  Type: PostgreSQL\
+  Port: 5432\
+  Source: Custom - 10.10.0.0/16 (VPC CIDR)\
+  Description: "Allow PostgreSQL from VPC"\
+  Outbound rules: Keep default (all traffic)\
   Create
 
 
@@ -439,41 +439,41 @@ Order Service: order-tg, Port: 8004
 
 Create Application Load Balancer:
 
-EC2 Console → Load Balancers → Create load balancer
+EC2 Console → Load Balancers → Create load balancer\
 Application Load Balancer → Create
 
-Basic configuration:
-Name: Web-App-LB
-Scheme: Internal
+Basic configuration:\
+Name: Web-App-LB\
+Scheme: Internal\
 IP address type: IPv4
 
-Network mapping:
-VPC: Web App-vpc
-Subnets: Select both private ECS subnets
-Security groups: Select web-ALB-SG
-Listeners: HTTP:80
-Default action: Forward to product-tg
+Network mapping:\
+VPC: Web App-vpc\
+Subnets: Select both private ECS subnets\
+Security groups: Select web-ALB-SG\
+Listeners: HTTP:80\
+Default action: Forward to product-tg\
 Create load balancer
 
 Configure ALB Listener Rules
 
 Go to Load Balancer → Listeners → HTTP:80 → View/edit rules
 
-Add rules for path-based routing:
-Product Service Rule:
-IF: Path is /products*
+Add rules for path-based routing:\
+Product Service Rule:\
+IF: Path is /products*\
 THEN: Forward to product-service-tg
 
-Cart Service Rule:
-IF: Path is /cart*
+Cart Service Rule:\
+IF: Path is /cart*\
 THEN: Forward to cart-service-tg
 
-User Service Rule:
-IF: Path is /users*
-THEN: Forward to user-service-tg
+User Service Rule:\
+IF: Path is /users*\
+THEN: Forward to user-service-tg\
 Order Service Rule:
 
-IF: Path is /orders*
+IF: Path is /orders*\
 THEN: Forward to order-service-tg
 
 Leave all the weight as 1
@@ -487,9 +487,9 @@ Service URL Parameters\
 Systems Manager Console → Parameter Store → Create parameter
 
 User Service URL:\
-Name: /ecommerce/dev/user-service-url
-Type: String
-Value: http://<internal-alb-dns-name> (get from ALB details)
+Name: /ecommerce/dev/user-service-url\
+Type: String\
+Value: http://<internal-alb-dns-name> (get from ALB details)\
 Repeat for other services:
 
 /ecommerce/dev/cart-service-url → http://<internal-alb-dns-name>\
@@ -507,14 +507,14 @@ Repeat the above steps for the remaining 3 services.\
 Validation Table\
 Create repositories for all services:
 
-Service	Repository Name\
+Service	              Repository Name\
 Product Service	ecommerce/product-service\
 Cart Service	   ecommerce/cart-service\
 User Service	   ecommerce/user-service\
 Order Service	   ecommerce/order-service\
 
 
-Build and Push Docker Images:\
+Build and Push Docker Images:
 
 Note: Below CMDs need to be executed from the local machine (not from AWS console or EC2 instance).
 
@@ -531,7 +531,7 @@ aws ecr get-login-password --region <your-region> | docker login --username AWS 
 
 Build the image:
 
-cd services/product-service
+cd services/product-service\
 docker build -t ecommerce/product-service .
 
 Tag the image:\
@@ -545,31 +545,31 @@ Build and Push other services
 Note: Make sure to change to each service directory before building.
 
 Cart Service:\
-cd ../cart-service  # Navigate to cart-service directory
-docker build -t ecommerce/cart-service .
-docker tag ecommerce/cart-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest
+cd ../cart-service  # Navigate to cart-service directory\
+docker build -t ecommerce/cart-service .\
+docker tag ecommerce/cart-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest\
 docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest
 
 User Service:\
-cd ../user-service  # Navigate to user-service directory
-docker build -t ecommerce/user-service .
-docker tag ecommerce/user-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest
+cd ../user-service  # Navigate to user-service directory\
+docker build -t ecommerce/user-service .\
+docker tag ecommerce/user-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest\
 docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest
 
 Order Service:\
-cd ../order-service  # Navigate to order-service directory
-docker build -t ecommerce/order-service .
-docker tag ecommerce/order-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest
+cd ../order-service  # Navigate to order-service directory\
+docker build -t ecommerce/order-service .\
+docker tag ecommerce/order-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest\
 docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest
 
 
 Create IAM Role for ECS Tasks
 
-Create ECS Task Role
-IAM Console → Roles → Create role
-Trusted entity type: AWS service
-Service: Elastic Container Service
-Use case: Elastic Container Service Task
+Create ECS Task Role\
+IAM Console → Roles → Create role\
+Trusted entity type: AWS service\
+Service: Elastic Container Service\
+Use case: Elastic Container Service Task\
 Next
 
 Attach permissions policies:
@@ -635,35 +635,35 @@ Repeat the above steps for the remaining 3 services, changing the port numbers a
 
 Create task definitions for all services:
 
-Service	Task Definition	CPU	Memory	Port
-Product Service	ecommerce-product-service	1 vCPU	3 GB	8001
-Cart Service	   ecommerce-cart-service   	1 vCPU	3 GB	8002
-User Service	   ecommerce-user-service	   1 vCPU	3 GB	8003
+Service	               Task Definition	     CPU   Memory	Port\
+Product Service	ecommerce-product-service	1 vCPU	3 GB	8001\
+Cart Service	   ecommerce-cart-service   	1 vCPU	3 GB	8002\
+User Service	   ecommerce-user-service	   1 vCPU	3 GB	8003\
 Order Service	   ecommerce-order-service	   1 vCPU	3 GB	8004
 
 Create ECS Cluster and Services
 
-Create ECS Cluster
-ECS Console → Clusters → Create cluster
-Cluster name: ecommerce-cluster
-Infrastructure: Fargate Only (serverless)
+Create ECS Cluster\
+ECS Console → Clusters → Create cluster\
+Cluster name: ecommerce-cluster\
+Infrastructure: Fargate Only (serverless)\
 Create cluster
 
-Create ECS Service for Product Service
-Go to cluster → Services → Create service
-Launch type: Fargate
-Task definition: ecommerce-product-service:1
-Service name: ecommerce-product-service
-Desired tasks: 1
-Networking - VPC: Web App-vpc
-Subnets: Select both private ECS subnets (deselect rest of the subnets if they are auto selected)
-Security group: ecommerce-ecs-sg
-Public IP: Turned off
-Load Balancing: Enable "Use load balancing"
-Load balancer type: Application Load Balancer
-Load balancer: ecommerce-internal-alb
-Target group: product-service-tg
-Create service
+Create ECS Service for Product Service\
+Go to cluster → Services → Create service\
+Launch type: Fargate\
+Task definition: ecommerce-product-service:1\
+Service name: ecommerce-product-service\
+Desired tasks: 1\
+Networking - VPC: Web App-vpc\
+Subnets: Select both private ECS subnets (deselect rest of the subnets if they are auto selected)\
+Security group: ecommerce-ecs-sg\
+Public IP: Turned off\
+Load Balancing: Enable "Use load balancing"\
+Load balancer type: Application Load Balancer\
+Load balancer: ecommerce-internal-alb\
+Target group: product-service-tg\
+Create service\
 Repeat the above steps for the remaining 3 services.
 
 Create services for all microservices:
@@ -740,14 +740,14 @@ Service not starting:
 Check ECR image URI in task definition\
 Verify environment variables are set correctly
 
-Check IAM task role is assigned
+Check IAM task role is assigned\
 Health check failing:
 
-Verify /health endpoint exists in your service
-Check security group allows traffic on service ports
+Verify /health endpoint exists in your service\
+Check security group allows traffic on service ports\
 Parameter Store access issues:
 
-Verify parameter names match exactly (case-sensitive)
+Verify parameter names match exactly (case-sensitive)\
 Check parameter exists in correct region
 
 
@@ -755,7 +755,7 @@ API Gateway
 
 Create an HTTP API Gateway that connects to the internal Application Load Balancer, providing a public endpoint to access all microservices.
 
-Tasks:
+Tasks:\
 Create a VPC Link for API Gateway to connect privately to the internal ALB\
 Create HTTP API Gateway\
 Create HTTP proxy integration to internal ALB (VPC Resource) via VPCLink\
@@ -768,34 +768,34 @@ API endpoint testing
 
 The API Gateway will have three specific routes:
 
-GET /products → Product Service (public, no auth)
-ANY /{proxy+} → All Services (authenticated, Cognito-authorizer required)
+GET /products → Product Service (public, no auth)\
+ANY /{proxy+} → All Services (authenticated, Cognito-authorizer required)\
 OPTIONS /{proxy+} → CORS preflight (public, no auth)
 
 Create VPC Link
 
 Create Security Group for VPC Link
 
-VPC Console → Security Groups → Create security group
-Name: ecommerce-vpclink-sg
-Description: "Security group for VPC Link to ALB"
-VPC: Select ecommerce-vpc
-Inbound rules:
-Type: HTTP, Port: 80, Source: 0.0.0.0/0 (API Gateway traffic)
-Type: HTTPS, Port: 443, Source: 0.0.0.0/0 (API Gateway traffic)
-Outbound rules: All traffic (default)
+VPC Console → Security Groups → Create security group\
+Name: ecommerce-vpclink-sg\
+Description: "Security group for VPC Link to ALB"\
+VPC: Select ecommerce-vpc\
+Inbound rules:\
+Type: HTTP, Port: 80, Source: 0.0.0.0/0 (API Gateway traffic)\
+Type: HTTPS, Port: 443, Source: 0.0.0.0/0 (API Gateway traffic)\
+Outbound rules: All traffic (default)\
 Create security group
 
-VPC Link Configuration
-API Gateway Console → VPC Links → Create VPC Link
-VPC Link version: VPC Link for HTTP APIs (v2)
-Name: ecommerce-vpc-link
-Description: "VPC Link for ecommerce internal ALB"
-VPC: Select Web App-vpc
-Subnets: Select both private ECS subnets:
-ecommerce-private-ecs-1
-ecommerce-private-ecs-2
-Security groups: Select ecommerce-vpclink-sg
+VPC Link Configuration\
+API Gateway Console → VPC Links → Create VPC Link\
+VPC Link version: VPC Link for HTTP APIs (v2)\
+Name: ecommerce-vpc-link\
+Description: "VPC Link for ecommerce internal ALB"\
+VPC: Select Web App-vpc\
+Subnets: Select both private ECS subnets:\
+ecommerce-private-ecs-1\
+ecommerce-private-ecs-2\
+Security groups: Select ecommerce-vpclink-sg\
 Create VPC Link
 
 VPC Link creation takes 5-10 minutes. Wait for status to become "Available" before proceeding.
@@ -818,7 +818,7 @@ Create
 Create HTTP Integration
 
 ALB Integration over VPCLink (VPC Private Resource integration)\
-Create one integration that will be used by all routes:\
+Create one integration that will be used by all routes:
 
 Go to your API → Develop → Integrations → Manage integrations → Create\
 Integration type: Private resource\
@@ -830,15 +830,15 @@ Create integration
 
 Create Cognito JWT Authorizer
 
-Cognito JWT Authorizer Configuration
-Go to your API → Authorization → Authorizers → Create authorizer
-Name: cognito-jwt-authorizer
-Authorizer type: JWT
-Identity source: $request.header.Authorization
-Issuer URL: https://cognito-idp.<your-region>.amazonaws.com/<user-pool-id>
-Replace <your-region> and <user-pool-id> with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority
-Audience: <your-app-client-id>
-Use the App Client ID from Module 3
+Cognito JWT Authorizer Configuration\
+Go to your API → Authorization → Authorizers → Create authorizer\
+Name: cognito-jwt-authorizer\
+Authorizer type: JWT\
+Identity source: $request.header.Authorization\
+Issuer URL: https://cognito-idp.<your-region>.amazonaws.com/<user-pool-id>\
+Replace <your-region> and <user-pool-id> with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority\
+Audience: <your-app-client-id>\
+Use the App Client ID from Module 3\
 Create authorizer
 
 
@@ -869,7 +869,7 @@ Integration: Select the ALB Integration created above\
 Authorization: None\
 Create route
 
-Note:
+Note:\
 All three routes use the same ALB integration\
 /products is public (no authentication required)\
 /{proxy+} requires JWT authentication for all other endpoints\
@@ -900,30 +900,30 @@ curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/products
 
 Test Authorized Endpoints (Should Return 401):
 
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/cart
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/users
-curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/orders
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/cart\
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/users\
+curl https://xxxxxxxxxx.execute-api.<region>.amazonaws.com/orders\
 # Expected: {"message":"Unauthorized"}
 
 
-Troubleshooting
+Troubleshooting\
 CORS Errors:
 
-If you see "Access-Control-Allow-Origin" errors, ensure CORS is configured with Access-Control-Allow-Headers: *
-Verify OPTIONS routes are created for preflight requests
+If you see "Access-Control-Allow-Origin" errors, ensure CORS is configured with Access-Control-Allow-Headers: *\
+Verify OPTIONS routes are created for preflight requests\
 401 Unauthorized:
 
-Verify Cognito User Pool ID in authorizer configuration
-Ensure App Client ID matches in authorizer audience
+Verify Cognito User Pool ID in authorizer configuration\
+Ensure App Client ID matches in authorizer audience\
 502 Bad Gateway:
 
-Check VPC Link status
-Verify internal ALB DNS name in integration URI
-Ensure ALB target groups are healthy
+Check VPC Link status\
+Verify internal ALB DNS name in integration URI\
+Ensure ALB target groups are healthy\
 504 Gateway Timeout:
 
-Check ECS service health
-Verify ALB listener rules are configured correctly
+Check ECS service health\
+Verify ALB listener rules are configured correctly\
 Check VPCLink Security group (should allow HTTP/HTTPS from 0.0.0.0/0) and ALB Security group (should allow HTTP from VPC CIDR)
 
 We have configured:\
@@ -945,31 +945,31 @@ Test the fully integrated application
 
 Update frontend with API Gateway URL
 
-Navigate to frontend directory:
+Navigate to frontend directory:\
 cd frontend/react-app
 
 Edit src/aws-config.js — update only the baseUrl field:
 
-const awsConfig = {
-  Auth: {
-    Cognito: {
-      userPoolId: '<COGNITO_USER_POOL_ID>',       // Already set in Module 3
-      userPoolClientId: '<COGNITO_CLIENT_ID>',    // Already set in Module 3
-      loginWith: {
-        email: true,
-      },
-    }
-  },
-  API: {
-    baseUrl: '<API_GATEWAY_URL>'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
-  }
+const awsConfig = {\
+  Auth: {\
+    Cognito: {\
+      userPoolId: '<COGNITO_USER_POOL_ID>',       // Already set in Module 3\
+      userPoolClientId: '<COGNITO_CLIENT_ID>',    // Already set in Module 3\
+      loginWith: {\
+        email: true,\
+      },\
+    }\
+  },\
+  API: {\
+    baseUrl: '<API_GATEWAY_URL>'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com\
+  }\
 };
 
 export default awsConfig;
 
 Rebuild and redeploy frontend to S3:
 
-npm run build
+npm run build\
 aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
 
 Next, Invalidate CloudFront Cache from AWS Console or using AWS CLI:
@@ -1115,7 +1115,7 @@ Status should change to "Issued"
 
 Add alternate domain name for CloudFront Distribution:
 
-CloudFront Console → Your distribution → Edit
+CloudFront Console → Your distribution → Edit\
 Settings:\
 Alternate domain names (CNAMEs): Add yourdomain.com and www.yourdomain.com\
 Custom SSL certificate: Select your ACM certificate\
@@ -1126,7 +1126,7 @@ Create Route53 Records:
 
 A Record for Top level domain:
 
-Route53 → Hosted zones → Your domain
+Route53 → Hosted zones → Your domain\
 Create record:\
 Record name: Leave empty (root domain)\
 Record type: A\
@@ -1150,7 +1150,7 @@ Update Cognito Callback URLs:
 Cognito Console → User pools → your user pool\
 App integration → App client → Edit
 
-Hosted UI settings:
+Hosted UI settings:\
 Add callback URLs: https://yourdomain.com, https://www.yourdomain.com\
 Add sign-out URLs: https://yourdomain.com, https://www.yourdomain.com\
 Save
