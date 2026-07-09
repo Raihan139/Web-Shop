@@ -83,11 +83,11 @@ Steps:
    
    Public Subnet 1:
 
-    VPC Console → Subnets → Create subnet\
-    VPC: Web App-vpc\
-    Name: Web App-subnet-public-1\
-    Availability Zone: us-east-1a\
-    IPv4 CIDR block: 10.10.0.0/24\
+    VPC Console → Subnets → Create subnet
+    VPC: Web App-vpc
+    Name: Web App-subnet-public-1
+    Availability Zone: us-east-1a
+    IPv4 CIDR block: 10.10.0.0/24
     Create subnet
 
     Repeat for the rest of the subnets below:
