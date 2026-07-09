@@ -993,7 +993,7 @@ Time to test the Fully Integrated Application:
 
 Open your CloudFront URL in a browser:
 
-https://<your-cloudfront-domain>
+https://(your-cloudfront-domain)
 
 Do  a test and see if the sign in, product listing, adding to cart, placing an order, order history etc. works.
 
@@ -1019,7 +1019,7 @@ Name: ecommerce-order-events\
 Display name: eCommerce Order Events\
 Create topic\
 Note Topic ARN\
-Copy the Topic ARN (e.g., arn:aws:sns:<region>:<account-id>:ecommerce-order-events)\
+Copy the Topic ARN (e.g., arn:aws:sns:(region):(account-id):ecommerce-order-events)\
 Save this ARN - we'll use it in Parameter Store
 
 Create SQS Queue for Logging:
@@ -1065,7 +1065,7 @@ SNS Topic ARN Parameter\
 Systems Manager Console → Parameter Store → Create parameter\
 Name: /ecommerce/dev/sns/topic-arn\
 Type: String\
-Value: arn:aws:sns:<region>:<account-id>:ecommerce-order-events\
+Value: arn:aws:sns:(region):(account-id):ecommerce-order-events\
 Create parameter
 
 This parameter is already created and used by the order service to publish messages to SNS.
