@@ -497,7 +497,8 @@ Value: http://<internal-alb-dns-name> (get from ALB details)\
 Repeat for other services:
 
 /ecommerce/dev/cart-service-url → http://(internal-alb-dns-name) \
-/ecommerce/dev/product-service-url → http://(internal-alb-dns-name) \
+/ecommerce/dev/product-service-url → http://(internal-alb-dns-name) 
+
 Note: All services use the same ALB DNS name. The ALB routes requests based on path.
 
 
@@ -506,16 +507,18 @@ Create ECR Repositories:
 Create Repository for Product Service\
 ECR Console → Repositories → Create repository\
 Repository name: ecommerce/product-service\
-Create repository\
-Repeat the above steps for the remaining 3 services.\
+Create repository
+
+Repeat the above steps for the remaining 3 services.
+
 Validation Table\
 Create repositories for all services:
 
-Service	              Repository Name\
-Product Service	ecommerce/product-service\
-Cart Service	   ecommerce/cart-service\
-User Service	   ecommerce/user-service\
-Order Service	   ecommerce/order-service\
+   Service	              Repository Name
+Product Service   	ecommerce/product-service\
+Cart Service	      ecommerce/cart-service\
+User Service	      ecommerce/user-service\
+Order Service	      ecommerce/order-service\
 
 
 Build and Push Docker Images:
