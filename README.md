@@ -186,7 +186,8 @@ Steps:
   -Configure and Build React Application and Deploy to S3\
   -Test login/signup functionality
 
- <img width="881" height="417" alt="image" src="https://github.com/user-attachments/assets/ce2d70d4-fe9c-4d63-9c8b-21bf79f31de0" />
+<img width="517" height="240" alt="CloudFront WebApp" src="https://github.com/user-attachments/assets/c3ab4f1f-c14c-49aa-8258-29eaeff48086" />
+
 
 
   S3 Bucket Configuration:\
