@@ -843,7 +843,7 @@ Authorizer type: JWT\
 Identity source: $request.header.Authorization\
 Issuer URL: https://cognito-idp.(your-region).amazonaws.com/(user-pool-id)\
 Replace (your-region) and (user-pool-id) with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority\
-Audience: <your-app-client-id>\
+Audience: (your-app-client-id)\
 Use the App Client ID from Module 3\
 Create authorizer
 
