@@ -1003,9 +1003,6 @@ Note:
 
 Ideally for the email notification we should use Amazon SES (Simple Email Service) where we have the Lambda function subscription for SNS topic and Lambda triggers an email to the email id from the order event using SES. However by default SES service is in Sandbox mode in AWS account and it applies restriction on sending emails from un-verified sender. We have to ask AWS to move SES service out of SandBox and enable it for the Production use and this may take few days. Hence, we are going to send email directly to fixed email id using the Amazon SNS.
 
-Architecture:
-
-<img width="613" height="301" alt="image" src="https://github.com/user-attachments/assets/cf57c4a3-6643-464a-a9c9-e78ca9a92231" />
 
 Create SNS Topic
 
