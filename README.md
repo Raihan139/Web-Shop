@@ -246,7 +246,7 @@ Steps:
           }
         },
         API: {
-          baseUrl: ''  // Leave empty for now — will be updated in Module 7
+          baseUrl: ''  // Leave empty for now, will be updated later
         }
       };
       
