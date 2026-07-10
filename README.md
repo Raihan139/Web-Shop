@@ -771,7 +771,6 @@ Create API routes\
 API CORS configuration for frontend access\
 API endpoint testing
 
-<img width="911" height="362" alt="image" src="https://github.com/user-attachments/assets/888580a9-fea5-431c-a9e8-44468f482841" />
 
 The API Gateway will have three specific routes:
 
