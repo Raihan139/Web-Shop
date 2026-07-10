@@ -701,7 +701,6 @@ Test API Endpoints:
 
 Launch a Bastion Host for testing only as we can't directly access the internal ALB URL. We will terminate the instance after validation
 
-<img width="494" height="463" alt="image" src="https://github.com/user-attachments/assets/5070ca9a-31d4-4889-a092-1ef6e5061405" />
 
 Create Bastion Host:
 
