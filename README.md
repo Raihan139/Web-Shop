@@ -8,6 +8,9 @@ Architecture:
 
 <img width="783" height="382" alt="image" src="https://github.com/user-attachments/assets/f59ee296-f6ec-482c-9657-3eb8cb497fa0" />
 
+<img width="793" height="859" alt="Web App Image" src="https://github.com/user-attachments/assets/c621ac48-1481-4f62-8c59-ca1c60b05054" />
+
+
 
 AWS Services used to build the application website:
 
