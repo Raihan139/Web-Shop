@@ -407,9 +407,6 @@ Parameter Store - Configuration Management:
   Backend Services Deployment (ECS and ALB):
 
   Next, we deploy microservices using Docker containers on Amazon ECS with Fargate run time and internally expose the services using the internal Application Load Balancer.
-
-  <img width="1086" height="506" alt="573800788-ce3a7981-6d9b-42f1-a2c0-9494be3f6837" src="https://github.com/user-attachments/assets/b6f1a0df-487a-4582-96bb-59a5c2c465b3" />
-
   
 Create Application Load Balancer (internal):
 
