@@ -58,7 +58,7 @@ Steps:
    NAT Gateway - Internet access for private subnets\
    Route Tables - Traffic routing configuration
 
-<img width="892" height="417" alt="image" src="https://github.com/user-attachments/assets/947e189d-060c-46a4-a77a-fa2e14b8cd7b" />
+<img width="802" height="651" alt="Web App Network" src="https://github.com/user-attachments/assets/30dd5b25-56a9-48a3-9810-3824947bda8a" />
 
 
    Steps:
