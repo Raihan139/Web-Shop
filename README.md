@@ -93,11 +93,11 @@ Steps:
 
     Repeat for the rest of the subnets below:
 
-    Public	      Web App-subnet-public2	       CIDR 10.10.1.0/24	Region us-east-1a	 Purpose --> NAT Gateway, Bastion host (For HA setup if required)
-    Private ECS	Web App-subnet-ecs-private1    CIDR	10.10.10.0/24	Region us-east-1a	 Purpose --> ECS Services, Internal ALB, APIGW VPCLink
-    Private ECS	Web App-subnet-ecs-private2	 CIDR 10.10.11.0/24	Region us-east-1a	 Purpose --> ECS Services, Internal ALB, APIGW VPCLink
-    Private DB	   Web App-subnet-db-private3	    CIDR 10.10.20.0/24	Region us-east-1a	 Purpose --> RDS Primary
-    Private DB	   Web App-subnet-db-private4	    CIDR 10.10.21.0/24	Region us-east-1a	 Purpose --> RDS Standby (For HA setup if required)
+    Public	      Web App-subnet-public2	       CIDR 10.10.1.0/24	Region us-east-1a	 Purpose  NAT Gateway, Bastion host (For HA setup if required)
+    Private ECS	Web App-subnet-ecs-private1    CIDR	10.10.10.0/24	Region us-east-1a	 Purpose  ECS Services, Internal ALB, APIGW VPCLink
+    Private ECS	Web App-subnet-ecs-private2	 CIDR 10.10.11.0/24	Region us-east-1a	 Purpose  ECS Services, Internal ALB, APIGW VPCLink
+    Private DB	   Web App-subnet-db-private3	    CIDR 10.10.20.0/24	Region us-east-1a	 Purpose  RDS Primary
+    Private DB	   Web App-subnet-db-private4	    CIDR 10.10.21.0/24	Region us-east-1a	 Purpose  RDS Standby (For HA setup if required)
 
 
   NAT Gateway:
