@@ -1081,7 +1081,6 @@ Custom Domain & SSL:
 
 Access application using Custom domain name and enable HTTPS with SSL certificate
 
-<img width="870" height="396" alt="image" src="https://github.com/user-attachments/assets/97e3b5ba-0ea2-4cc2-9568-30713467c416" />
 
 Prerequisites:
 
