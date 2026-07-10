@@ -1040,7 +1040,7 @@ SQS Subscription for Shipping\
 Create subscription\
 Topic ARN: Select ecommerce-order-events\
 Protocol: Amazon SQS\
-Endpoint: Enter the SQS queue ARN from step 7.2\
+Endpoint: Enter the SQS queue ARN noted earlier\
 Create subscription\
 Verify status shows "Confirmed"\
 This should automatically update the SQS queue Policy to allow SQS:SendMessage action for SNS Topic.
