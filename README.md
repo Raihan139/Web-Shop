@@ -267,14 +267,14 @@ Steps:
   Cognito Console → User pools → Web App User Pool\
   App integration tab → App clients → Click your app client\
   Edit Login pages settings:\
-  Allowed callback URLs: Add https://<your-cloudfront-domain>\
-  Allowed sign-out URLs: Add https://<your-cloudfront-domain>\
+  Allowed callback URLs: Add https://(your-cloudfront-domain)\
+  Allowed sign-out URLs: Add https://(your-cloudfront-domain)\
   Save changes
 
 
   Test Login/Signup:
 
-  Try opening your CloudFront URL in a browser -->  https://<your-cloudfront-domain>
+  Try opening your CloudFront URL in a browser -->  https://(your-cloudfront-domain)
 
   Working as expected --> Sign up with email, Email verification, and Login / logout\
   Not yet working --> Product listing, Cart, and Orders (Frontend-Backend configuration required)
@@ -311,10 +311,10 @@ Steps:
 
   Load Sample Products Data:\
   cd data\
-  bash update-product-image-urls.sh <cloudfront URL>
+  bash update-product-image-urls.sh (cloudfront URL)
 
   Load Products into DynamoDB:\
-  bash load-products.sh <your-region>
+  bash load-products.sh (your-region)
 
   Verify that DynamoDB table is updated:
 
@@ -495,7 +495,7 @@ Systems Manager Console → Parameter Store → Create parameter
 User Service URL:\
 Name: /ecommerce/dev/user-service-url\
 Type: String\
-Value: http://<internal-alb-dns-name> (get from ALB details)\
+Value: http://(internal-alb-dns-name) (get from ALB details)\
 Repeat for other services:
 
 /ecommerce/dev/cart-service-url → http://(internal-alb-dns-name) \
@@ -516,11 +516,11 @@ Repeat the above steps for the remaining 3 services.
 Validation Table\
 Create repositories for all services:
 
-   Service|	              |Repository Name\
+   Service                    Repository Name\
 Product Service   -->	ecommerce/product-service\
-Cart Service	 -->     ecommerce/cart-service\
-User Service	  -->     ecommerce/user-service\
-Order Service	   -->    ecommerce/order-service
+Cart Service	   -->   ecommerce/cart-service\
+User Service	   -->   ecommerce/user-service\
+Order Service	   -->   ecommerce/order-service
 
 
 Build and Push Docker Images:
@@ -544,7 +544,7 @@ cd services/product-service\
 docker build -t ecommerce/product-service .
 
 Tag the image:\
-docker tag ecommerce/product-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+docker tag ecommerce/product-service:latest (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
 
 Push the image:\
 docker push (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
@@ -645,11 +645,11 @@ Repeat the above steps for the remaining 3 services, changing the port numbers a
 
 Create task definitions for all services:
 
-Service	    ------   Task Definition	-----   CPU -----  Memory -----	Port\
-Product Service ------	ecommerce-product-service ------	1 vCPU ------	3 GB ------	8001\
-Cart Service	------   ecommerce-cart-service ------  	1 vCPU ------	3 GB ------	8002\
-User Service ------	   ecommerce-user-service ------	   1 vCPU ------	3 GB ------	8003\
-Order Service ------	   ecommerce-order-service	------   1 vCPU ------	3 GB ------	8004
+Service	              Task Definition	        CPU      Memory 	Port\
+Product Service 	ecommerce-product-service 	1 vCPU 	   3 GB   	8001\
+Cart Service	   ecommerce-cart-service   	1 vCPU 	   3 GB  	8002\
+User Service 	   ecommerce-user-service 	   1 vCPU 	   3 GB  	8003\
+Order Service 	   ecommerce-order-service	   1 vCPU 	   3 GB 	   8004
 
 Create ECS Cluster and Services
 
@@ -679,11 +679,11 @@ Repeat the above steps for the remaining 3 services.
 
 Create services for all microservices:
 
-Service	   -----          ECS Service Name	   -----         Target Group   -----  	Desired Tasks\
-Product Service -----	ecommerce-product-service  -----	product-service-tg   -----   	1\
-Cart Service -----	   ecommerce-cart-service	 -----       cart-service-tg	  -----       1\
-User Service	-----   ecommerce-user-service	-----        user-service-tg	   -----      1\
-Order Service	-----   ecommerce-order-service	  -----      order-service-tg	   -----   1
+Service	                ECS Service Name	             Target Group       	Desired Tasks\
+Product Service   	ecommerce-product-service  	  product-service-tg       	1\
+Cart Service 	      ecommerce-cart-service	        cart-service-tg	            1\
+User Service	      ecommerce-user-service	        user-service-tg	            1\
+Order Service	      ecommerce-order-service	        order-service-tg	         1
 
 Verify ECS Services
 
@@ -965,15 +965,15 @@ Edit src/aws-config.js — update only the baseUrl field:
 const awsConfig = {\
   Auth: {\
     Cognito: {\
-      userPoolId: '<COGNITO_USER_POOL_ID>',       // Already set in Module 3\
-      userPoolClientId: '<COGNITO_CLIENT_ID>',    // Already set in Module 3\
+      userPoolId: '(COGNITO_USER_POOL_ID)',       // Already set in Module 3\
+      userPoolClientId: '(COGNITO_CLIENT_ID)',    // Already set in Module 3\
       loginWith: {\
         email: true,\
       },\
     }\
   },\
   API: {\
-    baseUrl: '<API_GATEWAY_URL>'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com\
+    baseUrl: '(API_GATEWAY_URL)'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com\
   }\
 };
 
@@ -982,7 +982,7 @@ export default awsConfig;
 Rebuild and redeploy frontend to S3:
 
 npm run build\
-aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
+aws s3 sync build/ s3://(your-frontend-bucket-name) --delete --exclude "images/*"
 
 Next, Invalidate CloudFront Cache from AWS Console or using AWS CLI:
 
