@@ -119,10 +119,14 @@ Steps:
   Routes tab → Edit routes → Add route\
   Destination: 0.0.0.0/0\
   Target: Internet Gateway (Web App IGW)\
+  Click Save changes
   Subnet associations tab → Edit subnet associations\
   Associate both public subnets
+  Click save
   
   Private ECS Route Table:
+
+  Create the below in the same way
   
   Create route table: Web App Pvt RT\
   Add route: 0.0.0.0/0 → NAT Gateway\
@@ -159,12 +163,14 @@ Steps:
 
   Configure Cognito User Pool App Client:
 
-  Go to your new User Pool → App integration tab → App clients\
+  Go to your new User Pool
+  Under Applications menu → App clients\
   Click on your app client name and Edit\
   Under Authentication flows, enable:\
   ALLOW_USER_PASSWORD_AUTH\
   ALLOW_USER_SRP_AUTH\
   ALLOW_REFRESH_TOKEN_AUTH\
+  Leave rest as it is
   Click Save changes
 
 
@@ -496,7 +502,8 @@ Value: http://(internal-alb-dns-name) (get from ALB details)\
 Repeat for other services:
 
 /ecommerce/dev/cart-service-url → http://(internal-alb-dns-name) \
-/ecommerce/dev/product-service-url → http://(internal-alb-dns-name) 
+/ecommerce/dev/product-service-url → http://(internal-alb-dns-name)\
+/ecommerce/dev/order-service-url → http://(internal-alb-dns-name)
 
 Note: All services use the same ALB DNS name. The ALB routes requests based on path.
 
