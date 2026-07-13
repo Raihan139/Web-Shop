@@ -803,7 +803,6 @@ VPC Link Configuration\
 API Gateway Console → VPC Links → Create VPC Link\
 VPC Link version: VPC Link for HTTP APIs (v2)\
 Name: ecommerce-vpc-link\
-Description: "VPC Link for ecommerce internal ALB"\
 VPC: Select Web App-vpc\
 Subnets: Select both private ECS subnets:\
 ecommerce-private-ecs-1\
@@ -819,7 +818,6 @@ API Gateway Configuration\
 API Gateway Console → APIs → Create API\
 Choose: HTTP API → Build\
 API name: ecommerce-api\
-Description: "eCommerce HTTP API"\
 Next\
 Skip adding integrations - we'll configure these manually\
 Create\
@@ -835,6 +833,7 @@ Create one integration that will be used by all routes:
 
 Go to your API → Develop → Integrations → Manage integrations → Create\
 Integration type: Private resource\
+Click Select Manually
 Target service: ALB/NLB\
 Load balancer: Select Web App-alb\
 Listener: HTTP:80\
@@ -1158,7 +1157,7 @@ Create record
 Update Cognito Callback URLs:
 
 Cognito Console → User pools → your user pool\
-App integration → App client → Edit
+Applications → App client → Edit
 
 Hosted UI settings:\
 Add callback URLs: https://yourdomain.com, https://www.yourdomain.com\
