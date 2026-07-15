@@ -1,12 +1,8 @@
 # Web-Shop
-Online Electronics Store\
-This is a fully functioning online e-commerce electronics store built using several different AWS services.
 
-This project illustrates a cloud-native services based application which has a Frontend layer, Backend layer, Database layer, Access Layer and Integration layer.
+This production-ready, cloud-native e-commerce electronics platform leverages multiple AWS services to demonstrate a decoupled microservices architecture. The repository showcases a fully implemented production pipeline across the frontend, backend, database, access control, and system integration layers.
 
 Demo - https://1drv.ms/v/c/f2627629f95424da/IQD_qtLtlVR6Ragt_d87oEwUAWFeQFDnUDArxsoYB9DMHTs?e=u9iW5j
-
-
 
 Architecture:
 
@@ -14,17 +10,17 @@ Architecture:
 
 
 
-AWS Services used to build the application website:
+Infrastructure Architecture & AWS Service Catalog
 
-Frontend --> S3, CloudFront, and Route53\
-API Layer --> API Gateway, VPC Link, and ALB\
-Compute --> ECS and Fargate\
-Authentication --> Cognito User Pools\
-Databases --> DynamoDB and RDS PostgreSQL\
-Messaging --> SNS, SQS, and SES\
-Networking --> VPC, Subnets, Security Groups, and NAT Gateway\
-Logs and Management --> CloudWatch and Systems Manager\
-Security --> IAM
+Edge & Content Delivery (Frontend): Amazon S3 (static hosting), CloudFront (CDN), and Route 53 (DNS).\
+API Routing & Ingress Layer: API Gateway, VPC Links, and Application Load Balancers (ALB).\
+Containerized Compute: Amazon ECS orchestrated via AWS Fargate (serverless containers).\
+Identity & Access Management: AWS Cognito User Pools (CIAM).\
+Data Tier (Databases): Amazon DynamoDB (NoSQL) and RDS PostgreSQL (Relational).\
+Event-Driven Messaging: Amazon SNS (pub/sub), SQS (queuing), and SES (email delivery).\
+Network Topology: Amazon VPC with isolated Subnets, Security Groups, and NAT Gateways.\
+Observability & Operations: Amazon CloudWatch (logging/metrics) and AWS Systems Manager (SSM).\
+Security & Governance: AWS Identity and Access Management (IAM).
 
 
 Prerequisites: Ubuntu, AWS CLI, Docker, Git, Node.js
