@@ -2,68 +2,75 @@
 
 This production-ready, cloud-native e-commerce electronics platform leverages multiple AWS services to demonstrate a decoupled microservices architecture. The repository showcases a fully implemented production pipeline across the frontend, backend, database, access control, and system integration layers.
 
-Demo - https://1drv.ms/v/c/f2627629f95424da/IQD_qtLtlVR6Ragt_d87oEwUAWFeQFDnUDArxsoYB9DMHTs?e=u9iW5j
+**Demo** - https://1drv.ms/v/c/f2627629f95424da/IQD_qtLtlVR6Ragt_d87oEwUAWFeQFDnUDArxsoYB9DMHTs?e=u9iW5j
 
-Architecture:
+**Architecture:**
 
 <img width="793" height="859" alt="Web App Image" src="https://github.com/user-attachments/assets/c621ac48-1481-4f62-8c59-ca1c60b05054" />
 
 
 
-Infrastructure Architecture & AWS Service Catalog
 
-Edge & Content Delivery (Frontend): Amazon S3 (static hosting), CloudFront (CDN), and Route 53 (DNS).\
-API Routing & Ingress Layer: API Gateway, VPC Links, and Application Load Balancers (ALB).\
-Containerized Compute: Amazon ECS orchestrated via AWS Fargate (serverless containers).\
-Identity & Access Management: AWS Cognito User Pools (CIAM).\
-Data Tier (Databases): Amazon DynamoDB (NoSQL) and RDS PostgreSQL (Relational).\
-Event-Driven Messaging: Amazon SNS (pub/sub), SQS (queuing), and SES (email delivery).\
-Network Topology: Amazon VPC with isolated Subnets, Security Groups, and NAT Gateways.\
-Observability & Operations: Amazon CloudWatch (logging/metrics) and AWS Systems Manager (SSM).\
-Security & Governance: AWS Identity and Access Management (IAM).
+**Infrastructure Architecture & AWS Service Catalog:**
+
+**Edge & Content Delivery (Frontend):** Amazon S3 (static hosting), CloudFront (CDN), and Route 53 (DNS).
+
+**API Routing & Ingress Layer:** API Gateway, VPC Links, and Application Load Balancers (ALB).
+
+**Containerized Compute:** Amazon ECS orchestrated via AWS Fargate (serverless containers).
+
+**Identity & Access Management:** AWS Cognito User Pools (CIAM).
+
+**Data Tier (Databases):** Amazon DynamoDB (NoSQL) and RDS PostgreSQL (Relational).
+
+**Event-Driven Messaging:** Amazon SNS (pub/sub), SQS (queuing), and SES (email delivery).
+
+**Network Topology:** Amazon VPC with isolated Subnets, Security Groups, and NAT Gateways.
+
+**Observability & Operations:** Amazon CloudWatch (logging/metrics) and AWS Systems Manager (SSM).
+
+**Security & Governance:** AWS Identity and Access Management (IAM).
 
 
-Prerequisites: Ubuntu, AWS CLI, Docker, Git, Node.js
+**Prerequisites: Ubuntu, AWS CLI, Docker, Git, Node.js**
 
-Steps:
+**Steps:**
 
-1. Install Ubuntu on Windows machine using WSL2\
-   Next on the Linux machine (VM) install the below:\
-    -Git — version control\
-    -Docker — container runtime for building and pushing images\
-    -Node.js 20+ and npm — for building the React frontend\
-    -AWS CLI v2 — for interacting with AWS services
+1. **Environment Setup & Prerequisites**\
+   Enable WSL 2 (Windows Subsystem for Linux) and provision an Ubuntu distribution. Within the Ubuntu environment, install the     following core dependencies:\
+   -**Git: Source control management.**\
+   -**Docker Engine:** Container runtime utilized for building and publishing container images.\
+   -**Node.js (v20+) & npm:** Runtime environment and package manager required for compilation of the React frontend.\
+   -**AWS CLI v2:** Command-line interface configured for provisioning and managing AWS resources.
 
-2. Verify Installation using below commands:\
+3. **Verify the installations using the commands below:**\
    aws --version\
    docker --version\
    node --version\
    npm --version\
    git --version
 
-3. Install and configure AWS CLI on your machine\
+4. **Install and configure AWS CLI on your machine**\
    Check AWS website for instructions on installing and configuring AWS CLI
 
-4. Networking:
+5. **Networking:**
 
-   Create the VPC infrastructure with public and private subnets across 2 availability zones (AZ)
+   **Create public and private subnets across 2 availability zones (AZ) for the VPC infrastructure**
 
-   Note: Choose your AWS region
+   **Note: Choose your AWS region and select the AZs accordingly.**
 
-   VPC - CIDR 10.10.0.0/16\
-   Public Subnets - 2 subnets for NAT Gateway and Bastion host\
-   Private ECS Subnets - 2 subnets for application services\
-   Private Database (DB) Subnets - 2 subnets for RDS instances\
-   Internet Gateway - Internet access for public subnets\
-   NAT Gateway - Internet access for private subnets\
-   Route Tables - Traffic routing configuration
+   **VPC** - CIDR block 10.10.0.0/16\
+   **Public Subnets** - Allocated for public-facing edge infrastructure, 2 subnets for NAT Gateway and bastion host\
+   **Private ECS Subnets** - 2 private subnets for containerized application services\
+   **Private Database (DB) Subnets** - 2 private subnets for PostgreSQL DB instances\
+   **Internet Gateway** - Provides internet access for the public subnets\
+   **NAT Gateway** - For internet access for the private subnets\
+   **Route Tables** - Manage traffic routing
 
 <img width="802" height="651" alt="Web App Network" src="https://github.com/user-attachments/assets/30dd5b25-56a9-48a3-9810-3824947bda8a" />
 
 
-   Steps:
-
-   VPC:
+   **VPC:**
 
    VPC Console → Your VPCs → Create VPC\
    Name: Web App-vpc\
