@@ -4,6 +4,10 @@ This is a fully functioning online e-commerce electronics store built using seve
 
 This project illustrates a cloud-native services based application which has a Frontend layer, Backend layer, Database layer, Access Layer and Integration layer.
 
+Demo - https://1drv.ms/v/c/f2627629f95424da/IQD_qtLtlVR6Ragt_d87oEwUAWFeQFDnUDArxsoYB9DMHTs?e=u9iW5j
+
+
+
 Architecture:
 
 <img width="793" height="859" alt="Web App Image" src="https://github.com/user-attachments/assets/c621ac48-1481-4f62-8c59-ca1c60b05054" />
