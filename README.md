@@ -67,36 +67,31 @@ This production-ready, cloud-native e-commerce electronics platform leverages mu
    **NAT Gateway** - For internet access for the private subnets\
    **Route Tables** - Manage traffic routing
 
+   **Network Setup**
+
 <img width="802" height="651" alt="Web App Network" src="https://github.com/user-attachments/assets/30dd5b25-56a9-48a3-9810-3824947bda8a" />
 
 
    **VPC:**
 
-   VPC Console → Your VPCs → Create VPC\
-   Name: Web App-vpc\
-   IPv4 CIDR block: 10.10.0.0/16\
-   Tenancy: Default\
-   Create VPC
+  ### Step 1: Create the VPC
+1. Navigate to the **VPC Console**, select **Your VPCs**, and click **Create VPC**.
+2. Set the **Name** to `Web App-vpc`.
+3. Enter `10.10.0.0/16` for the **IPv4 CIDR block**.
+4. Keep the **Tenancy** as `Default` and click **Create VPC**.
 
-   Internet Gateway:
+### Step 2: Create and Attach the Internet Gateway
+1. Navigate to **Internet Gateways** and click **Create internet gateway**.
+2. Set the **Name** to `Web App IGW` and click **Create internet gateway**.
+3. Click **Actions**, select **Attach to VPC**, choose `Web App-vpc`, and click **Attach internet gateway**.
 
-   VPC Console → Internet Gateways → Create internet gateway\
-   Name: Web App IGW\
-   Create internet gateway\
-   Actions → Attach to VPC\
-   Select: Web App-vpc\
-   Attach internet gateway
+### Step 3: Create the Public Subnet
+1. Navigate to **Subnets** and click **Create subnet**.
+2. Select `Web App-vpc` as the target **VPC**.
+3. Set the **Name** to `Web App-subnet-public-1`.
+4. Choose `us-east-1a` for the **Availability Zone**.
+5. Enter `10.10.0.0/24` for the **IPv4 CIDR block** and click **Create subnet**.
 
-   Subnets:
-   
-   Public Subnet 1:
-
-    VPC Console → Subnets → Create subnet
-    VPC: Web App-vpc
-    Name: Web App-subnet-public-1
-    Availability Zone: us-east-1a
-    IPv4 CIDR block: 10.10.0.0/24
-    Create subnet
 
     Repeat for the rest of the subnets below:
 
