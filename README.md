@@ -102,85 +102,67 @@ This production-ready, cloud-native e-commerce electronics platform leverages mu
     Private DB	   Web App-subnet-db-private4	    CIDR 10.10.21.0/24	Region us-east-1a	 Purpose  RDS Standby (For HA setup if required)
 
 
-  NAT Gateway:
+  ### Step 4: Create a NAT Gateway
+1. Navigate to the **VPC Console**, select **NAT Gateways**, and click **Create NAT gateway**.
+2. Set the **Name** to `Web-App-GW`.
+3. Set the **Connectivity type** to `Public` and **Availability Mode** to `Zonal`.
+4. Select `Web App-subnet-public-1` as the **Subnet**.
+5. Click **Allocate Elastic IP** to assign an IP, then click **Create NAT gateway**.
 
-  VPC Console → NAT Gateways → Create NAT gateway\
-  Name: Web-App-GW\
-  Availability Mode: Zonal\
-  Subnet: Web App-subnet-public-1\
-  Connectivity type: Public\
-  Elastic IP allocation: Allocate Elastic IP\
-  Create NAT gateway
+### Step 5: Configure Route Tables
 
-  Public Route Table:
+#### Public Route Table
+1. Navigate to **Route Tables** and click **Create route table**.
+2. Set the **Name** to `Web App-RT`, select `Web App-vpc`, and click **Create route table**.
+3. Under the **Routes** tab, click **Edit routes**, then click **Add route**:
+   * **Destination:** `0.0.0.0/0`
+   * **Target:** `Internet Gateway` (Select `Web App IGW`)
+4. Click **Save changes**.
+5. Under the **Subnet associations** tab, click **Edit subnet associations**, select both public subnets, and click **Save associations**.
 
-  VPC Console → Route Tables → Create route table\
-  Name: Web App-RT\
-  VPC: Web App-vpc\
-  Create route table\
-  Routes tab → Edit routes → Add route\
-  Destination: 0.0.0.0/0\
-  Target: Internet Gateway (Web App IGW)\
-  Click Save changes
-  Subnet associations tab → Edit subnet associations\
-  Associate both public subnets
-  Click save
+#### Private ECS Route Table
+1. Click **Create route table**, name it `Web App Pvt RT`, and select `Web App-vpc`.
+2. Under **Edit routes**, add a route:
+   * **Destination:** `0.0.0.0/0`
+   * **Target:** `NAT Gateway` (Select `Web-App-GW`)
+3. Under **Edit subnet associations**, select both private ECS subnets and save.
+
+#### Private Database Route Table
+1. Click **Create route table**, name it `Web App DB Pvt RT`, and select `Web App-vpc`.
+2. Leave the routes as default (no internet/NAT route required).
+3. Under **Edit subnet associations**, select both private database subnets and save.
+
+### Step 6: Configure Authentication (AWS Cognito)
+Set up an AWS Cognito User Pool and App Client to manage user authentication and authorization.
+
+1. Navigate to the **AWS Cognito Console**, select **User pools**, and click **Create user pool**.
+2. Under **Configure sign-in experience**, select **Single-page application (SPA)**.
+3. Provide a **User pool name** (e.g., `Web App`) and complete the creation wizard.
+
   
-  Private ECS Route Table:
+  ### Step 7: Configure Cognito User Pool Options
+1. Under **Configure sign-in experience**, select **Email** for the sign-in identifiers.
+2. Ensure **Self-registration** is enabled.
+3. For **Required attributes**, select both **email** and **name**.
+4. Add your **Return URL** (e.g., `https://yourdomain.com`) or leave it blank if you do not have one yet.
+5. Click **Create user pool** (or **Create user directory**) to finish the initial setup.
 
-  Create the below in the same way
-  
-  Create route table: Web App Pvt RT\
-  Add route: 0.0.0.0/0 → NAT Gateway\
-  Associate: Both private ECS subnets
-  
-  Private Database Route Table:
-  
-  Create route table: Web App DB Pvt RT\
-  No new route required\
-  Associate: Both private database subnets
+### Step 8: Configure Cognito App Client Settings
+1. Open your newly created **User Pool**.
+2. Navigate to the **App integration** tab and scroll down to the **App clients** section.
+3. Click on your specific app client name and select **Edit**.
+4. Under **Authentication flows**, make sure the following are enabled:
+   * `ALLOW_USER_PASSWORD_AUTH`
+   * `ALLOW_USER_SRP_AUTH`
+   * `ALLOW_REFRESH_TOKEN_AUTH`
+5. Leave all other settings at their default values and click **Save changes**.
 
+### Step 9: Save Required Environment Variables
+Note down the following configuration values from the console. You will need them for your application's environment variables (`.env` file):
 
-  Authentication:
-
-  Set up AWS Cognito User Pool and App Client for user authentication and authorization.
-
-  Create User Pool:
-
-  Go to AWS Cognito Console → User pools → Create user pool
-
-  Define your application: Select Single-page application (SPA)
-  
-  Name for application: Web App (or choose another)
-  
-  Configure options:
-  
-  Options for sign-in identifiers: Select Email\
-  Self-registration: Enable\
-  Required attributes for sign-up: Select email and name\
-  Add a return URL: https://yourdomain.com (add domain name or else leave it blank)
-  
-  Click Create user directory
-
-
-  Configure Cognito User Pool App Client:
-
-  Go to your new User Pool
-  Under Applications menu → App clients\
-  Click on your app client name and Edit\
-  Under Authentication flows, enable:\
-  ALLOW_USER_PASSWORD_AUTH\
-  ALLOW_USER_SRP_AUTH\
-  ALLOW_REFRESH_TOKEN_AUTH\
-  Leave rest as it is
-  Click Save changes
-
-
-  Note down the following values in a notepad
-
-  User Pool ID (e.g., us-east-1_xxxxxxxxx)\
-  App Client ID (e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m)\
-  Cognito Domain (User Pool -> Branding -> Domain)
+* **User Pool ID** (Found at the top of your user pool overview, e.g., `us-east-1_xxxxxxxxx`)
+* **App Client ID** (Found under the App integration tab, e.g., `1a2b3c4d5e6f7g8h9i0j1k2l3m`)
+* **Cognito Domain** (Found under **App integration** -> **Branding** -> **Domain**)
 
 
   Frontend Deployment:
