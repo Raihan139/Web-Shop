@@ -212,7 +212,7 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
 
 6. Repeat for HTTP error code 404
 
-  Save these values:
+  Save the following values:
 
   CloudFront Distribution ID (e.g., E30JU8N49IUDRS)\
   CloudFront Domain Name (e.g., d1234567890.cloudfront.net)
@@ -271,15 +271,15 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
 ### Step 18: Initialize the Data Storage Layer
 
 #### Populate Product Imagery (S3)
-1. Drop into the data utility folder via your local terminal and execute the pre-packaged imagery payload sync:
+1. Use the below script to upload sample images from the data/product-images/ directory to the S3 bucket:
    ```bash
    cd data
    bash upload-images-to-s3.sh <your-bucket-name>
    ```
-2. Verify that asset routing functions over the edge network by curling or opening a random product asset link directly:
+2. Verify that the images are publicly accessible over the internet via a browser using the CloudFront URL:
    * *Example:* `https://<your-cloudfront-domain>/images/products/prod-001.jpg`
 
-#### Configure NoSQL Schema (Amazon DynamoDB)
+#### Configure DynamoDB
 1. Open the **DynamoDB Console**, select **Tables**, and click **Create table** to spin up the **Products Inventory**:
    * **Table name:** `ecommerce-products`
    * **Partition key:** `product_id` (Type: `String`)
@@ -295,12 +295,32 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
    * **Capacity mode:** `On-demand`
    * Click **Create table**.
 
-#### Seed Database Mock Records
-1. From the local `/data` directory, patch the static assets with your custom asset cache location:
+### Step 54: Format and Prepare Sample Product Data
+The repository includes a sample data payload file located at `data/products.json` containing 20 pre-configured product records. Individual item data blocks are structured using the following JSON schema:
+
+```json
+{
+  "product_id": "prod-001",
+  "name": "Wireless Bluetooth Headphones",
+  "description": "Premium noise-cancelling over-ear headphones",
+  "price": 89.99,
+  "stock": 150,
+  "image_url": "https://example.com/images/products/prod-001.jpg",
+  "category": "Electronics"
+}
+```
+
+#### Important Modification Instruction
+Because the default `image_url` property values point to placeholder destination endpoints, you must patch this data map with your real application infrastructure links before running database population routines. 
+
+Ensure that you replace the dummy values with the actual **CloudFront Domain CDN URL** that you generated and verified during your S3 asset upload configuration steps (e.g., `https://<your-cloudfront-domain>/images/products/prod-001.jpg`).
+
+1. Update the product image URLs using the following commands:
    ```bash
+   cd data
    bash update-product-image-urls.sh <your-cloudfront-domain>
    ```
-2. Feed the normalized mock data arrays directly up into your live DynamoDB environment:
+2. Now let's upload the products into DynamoDB:
    ```bash
    bash load-products.sh <your-aws-region>
    ```
@@ -310,7 +330,7 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
 
 #### 1. Define the DB Subnet Group
 1. Open the **RDS Console**, click **Subnet groups** from the left navigation panel, and click **Create DB subnet group**.
-2. Name the group `ecommerce-db` and set the description to `"Subnet group for web app RDS"`.
+2. Name the group `web-app-db-subnet-private 1` and set the description to `"Subnet group for web app RDS"`.
 3. Choose `Web App-vpc` from the dropdown list.
 4. Under **Add subnets**, pick your target Availability Zones (e.g., `us-east-1a` and `us-east-1b`) and carefully check the checkboxes corresponding to your two isolated **private database subnets**.
 5. Click **Create**.
@@ -318,7 +338,7 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
 #### 2. Establish Network Guardrails (Security Groups)
 1. Head back to the **VPC Console**, go to **Security Groups**, and choose **Create security group**.
 2. Set the configuration details as follows:
-   * **Name:** `ecommerce-rds-sg`
+   * **Name:** `web-app-rds-sg`
    * **Description:** `"Security group for RDS PostgreSQL"`
    * **VPC:** `Web App-vpc`
 3. Click **Add rule** under the **Inbound rules** table block:
@@ -342,12 +362,12 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
 4. Define the physical system resource footprint and networking:
    * **DB instance class:** Choose `Burstable classes` -> `db.t4g.micro`
    * **VPC:** Select `Web App-vpc`
-   * **DB subnet group:** Select your newly generated data group `Web App-subnet-db-private3`
+   * **DB subnet group:** Select your newly generated data group `web-app-db-subnet-private 1`
    * **Public access:** Select `No`
-   * **VPC security group:** Choose `Choose existing` -> Attach `ecommerce-rds-sg` *(Ensure you remove the 'default' group)*
+   * **VPC security group:** Choose `Choose existing` -> Attach `web-app-rds-sg` *(Ensure you remove the 'default' group)*
    * **Availability Zone:** Bind to your primary zone (e.g., `us-east-1a`)
 5. Under **Monitoring**, uncheck the **Enable Performance Insights** toggle box.
-6. Open the **Additional configuration** chevron at the very bottom *(Crucial Step)*:
+6. Open the **Additional configuration** at the very bottom *(Crucial Step)*:
    * **Initial database name:** Type `ecommercedb`
    * **Backup:** Uncheck **Enable automated backups**
    * **Encryption:** Uncheck **Enable encryption**
@@ -357,13 +377,13 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
 Store your environment variables centrally. The microservices automatically fetch these configurations at runtime.
 
 1. Navigate to the **Systems Manager Console**, select **Parameter Store**, and click **Create parameter**.
-2. Create the following parameters sequentially:
+2. Create the following parameters:
 
 | Parameter Name | Type | Value / Source |
 | :--- | :--- | :--- |
 | `/ecommerce/dev/aws/region` | `String` | Your target AWS region (e.g., `us-east-1`) |
 | `/ecommerce/dev/db/host` | `String` | Your RDS endpoint (Found in **RDS Console** → **Databases** → `ecommercedb-instance`) |
-| `/ecommerce/dev/db/password` | `SecureString` | The master database password you created in Step 19 |
+| `/ecommerce/dev/db/password` | `SecureString` | The master database password you created |
 
 ---
 
@@ -503,7 +523,7 @@ Assign the necessary operational resource access rules to your microservice cont
    * `CloudWatchLogsFullAccess`
    * `AmazonS3ReadOnlyAccess`
    * `AmazonSNSFullAccess`
-5. Name the role `ecommerce-ecs-task-role` and click **Create role**.
+5. Name the role `web-app-ecs-task-role` and click **Create role**.
 
 ---
 
@@ -512,9 +532,9 @@ Isolate your container computational layer by creating a restrictive traffic rou
 
 1. Open the **VPC Console**, select **Security Groups**, and click **Create security group**.
 2. Set the structural details:
-   * **Name:** `ecommerce-ecs-sg`
+   * **Name:** `web-app-ecs-sg`
    * **Description:** `"Security group for ECS tasks"`
-   * **VPC:** Select `Web App-vpc` (or `ecommerce-vpc`)
+   * **VPC:** Select `Web App-vpc`
 3. Create four distinct **Inbound rules** mapped exclusively to your load balancer entry point:
    * **Custom TCP** | Port `8001` | **Source:** `web-ALB-SG` (or `ecommerce-alb-sg`)
    * **Custom TCP** | Port `8002` | **Source:** `web-ALB-SG` (or `ecommerce-alb-sg`)
@@ -527,12 +547,12 @@ Isolate your container computational layer by creating a restrictive traffic rou
 ### Step 26: Define the Product Service ECS Task Profile
 1. Navigate to the **Amazon ECS Console**, select **Task definitions**, and click **Create new task definition**.
 2. Define the basic application structure parameters:
-   * **Task definition family:** `ecommerce-product-service`
+   * **Task definition family:** `web-app-product-service`
    * **Launch type:** `AWS Fargate`
    * **Operating system/Architecture:** `Linux/X86_64`
    * **Task CPU:** `1 vCPU`
    * **Task Memory:** `3 GB`
-   * **Task role:** `ecommerce-ecs-task-role`
+   * **Task role:** `web-app-ecs-task-role`
    * **Task execution role:** Select the option to create a default role (`ecsTaskExecutionRole`). *You will reuse this automatic execution role for the other remaining services.*
 3. Configure the **Container definition** properties:
    * **Container name:** `product-service`
@@ -555,10 +575,10 @@ Ensure you have created a task definition for each of your microservices using t
 
 | Service | Task Definition Family | CPU | Memory | Port |
 | :--- | :--- | :--- | :--- | :--- |
-| **Product Service** | `ecommerce-product-service` | 1 vCPU | 3 GB | 8001 |
-| **Cart Service** | `ecommerce-cart-service` | 1 vCPU | 3 GB | 8002 |
-| **User Service** | `ecommerce-user-service` | 1 vCPU | 3 GB | 8003 |
-| **Order Service** | `ecommerce-order-service` | 1 vCPU | 3 GB | 8004 |
+| **Product Service** | `web-app-product-service` | 1 vCPU | 3 GB | 8001 |
+| **Cart Service** | `web-app-cart-service` | 1 vCPU | 3 GB | 8002 |
+| **User Service** | `web-app-user-service` | 1 vCPU | 3 GB | 8003 |
+| **Order Service** | `web-app-order-service` | 1 vCPU | 3 GB | 8004 |
 
 ---
 
@@ -566,25 +586,25 @@ Ensure you have created a task definition for each of your microservices using t
 
 #### 1. Create the ECS Cluster
 1. Navigate to the **Amazon ECS Console**, select **Clusters**, and click **Create cluster**.
-2. Set the **Cluster name** to `ecommerce-cluster`.
+2. Set the **Cluster name** to `web-app-cluster`.
 3. Under **Infrastructure**, select **AWS Fargate (serverless)** only.
 4. Click **Create**.
 
 #### 2. Provision the Microservices
-Navigate to your new `ecommerce-cluster`, go to the **Services** tab, and click **Create**. Use the following reference table to deploy all four microservices to the cluster sequentially:
+Navigate to your new `web-app-cluster`, go to the **Services** tab, and click **Create**. Use the following reference table to deploy all four microservices to the cluster:
 
 | Parameter | Product Service | Cart Service | User Service | Order Service |
 | :--- | :--- | :--- | :--- | :--- |
 | **Compute options** | Launch type (Fargate) | Launch type (Fargate) | Launch type (Fargate) | Launch type (Fargate) |
-| **Task Definition** | `ecommerce-product-service:1` | `ecommerce-cart-service:1` | `ecommerce-user-service:1` | `ecommerce-order-service:1` |
-| **Service Name** | `ecommerce-product-service` | `ecommerce-cart-service` | `ecommerce-user-service` | `ecommerce-order-service` |
+| **Task Definition** | `web-app-product-service:1` | `web-app-cart-service:1` | `web-app-user-service:1` | `web-app-order-service:1` |
+| **Service Name** | `web-app-product-service` | `web-app-cart-service` | `web-app-user-service` | `web-app-order-service` |
 | **Desired Tasks** | `1` | `1` | `1` | `1` |
 | **VPC** | `Web App-vpc` | `Web App-vpc` | `Web App-vpc` | `Web App-vpc` |
 | **Subnets** | Both private ECS subnets | Both private ECS subnets | Both private ECS subnets | Both private ECS subnets |
-| **Security Group** | `ecommerce-ecs-sg` | `ecommerce-ecs-sg` | `ecommerce-ecs-sg` | `ecommerce-ecs-sg` |
+| **Security Group** | `web-app-ecs-sg` | `web-app-ecs-sg` | `web-app-ecs-sg` | `web-app-ecs-sg` |
 | **Public IP** | Turned off | Turned off | Turned off | Turned off |
 | **Load Balancing** | Enable Load Balancing | Enable Load Balancing | Enable Load Balancing | Enable Load Balancing |
-| **Load Balancer** | `ecommerce-internal-alb` | `ecommerce-internal-alb` | `ecommerce-internal-alb` | `ecommerce-internal-alb` |
+| **Load Balancer** | `web-app-internal-alb` | `web-app-internal-alb` | `web-app-internal-alb` | `web-app-internal-alb` |
 | **Target Group** | `product-service-tg` | `cart-service-tg` | `user-service-tg` | `order-service-tg` |
 
 ---
@@ -592,7 +612,7 @@ Navigate to your new `ecommerce-cluster`, go to the **Services** tab, and click 
 ### Step 29: Validate Deployment Health Status
 
 #### 1. Monitor Container Lifecycle
-Navigate to **ECS Console** → **Clusters** → `ecommerce-cluster` → **Services**. Confirm that all four microservices match the following parameters:
+Navigate to **ECS Console** → **Clusters** → `web-app-cluster` → **Services**. Confirm that all four microservices match the following parameters:
 * **Status:** `Active`
 * **Running tasks:** `1`
 * **Desired tasks:** `1`
@@ -619,7 +639,7 @@ Because the Application Load Balancer is strictly internal, you cannot access it
    * **Subnet:** Select any **public subnet**
    * **Auto-assign public IP:** Select `Enable`
    * **Security group:** Choose **Create security group**
-   * **Security group name:** `ecommerce-bastion-sg`
+   * **Security group name:** `web-app-bastion-sg`
    * **Inbound rule:** `SSH` (Port 22) | **Source:** Select `My IP`
 4. Click **Launch instance**.
 
@@ -652,11 +672,11 @@ When a task fails to reach a steady `Running` state, the internal container stdo
 #### 2. Resolving Boot Failures (Service Stuck in Pending/Crashing)
 * **Verify ECR Image URIs:** Double-check that your active ECS Task Definition references the exact image address string generated by your private ECR registry.
 * **Audit Active Environment Keys:** Open your container definition wizard and ensure that baseline runtime keys (like `ENVIRONMENT` or `AWS_REGION`) are fully mapped.
-* **Validate IAM Policy Attachment:** Verify that the `ecommerce-ecs-task-role` is properly assigned to the task definition profile so containers have legal credentials to run.
+* **Validate IAM Policy Attachment:** Verify that the `web-app-ecs-task-role` is properly assigned to the task definition profile so containers have legal credentials to run.
 
 #### 3. Fixing Load Balancer Probe Drops (Health Check Failures)
 * **Validate Code Routes:** Confirm that a lightweight `/health` routing endpoint exists and returns an HTTP status `200 OK` within your application source code.
-* **Review Network Access Rules:** Confirm that your `ecommerce-ecs-sg` security group includes active inbound TCP permissions on ports `8001`–`8004` that match the source group `web-ALB-SG`.
+* **Review Network Access Rules:** Confirm that your `web-app-ecs-sg` security group includes active inbound TCP permissions on ports `8001`–`8004` that match the source group `web-ALB-SG`.
 
 #### 4. Debugging System Variable Fetches (Parameter Store Drops)
 * **Check Key Casing:** Systems Manager keys are explicitly **case-sensitive**. Ensure strings like `/ecommerce/dev/db/host` match perfectly in your service lookup files.
@@ -677,7 +697,7 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
 #### 1. Establish the Network Access Control Group
 1. Open the **VPC Console**, select **Security Groups**, and click **Create security group**.
 2. Complete the standard metadata options:
-   * **Name:** `ecommerce-vpclink-sg`
+   * **Name:** `web-app-vpclink-sg`
    * **Description:** `"Security group for VPC Link to ALB"`
    * **VPC:** Select your primary network `Web App-vpc` (or `ecommerce-vpc`)
 3. Create two inbound rules to permit proxy traffic:
@@ -689,19 +709,19 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
 1. Open the **API Gateway Console**, select **VPC Links** from the left-side navigation panel, and click **Create**.
 2. Choose **VPC Link for HTTP APIs (v2)**.
 3. Configure the link parameters:
-   * **Name:** `ecommerce-vpc-link`
+   * **Name:** `web-app-vpc-link`
    * **VPC:** Select `Web App-vpc`
-   * **Subnets:** Select your **two private ECS subnets** (`ecommerce-private-ecs-1` & `ecommerce-private-ecs-2`)
-   * **Security groups:** Attach your newly generated `ecommerce-vpclink-sg`
+   * **Subnets:** Select your **two private ECS subnets** (`web-appe-private-ecs-1` & `web-app-private-ecs-2`)
+   * **Security groups:** Attach your newly generated `web-app-vpclink-sg`
 4. Click **Create**. 
 > ⏳ **Note:** Establishing a VPC Link takes between 5 to 10 minutes. Wait until the dashboard status turns green and reads **Available** before starting the next configuration phase.
 
 ---
 
-### Step 34: Spin up the HTTP API Core Service
+### Step 34: Spin up the HTTP API Gateway
 1. Navigate to the **API Gateway Console**, select **APIs**, and click **Create API**.
 2. Find the **HTTP API** card options block and click **Build**.
-3. Name your instance `ecommerce-api` and click **Next**.
+3. Name your instance `web-app-api` and click **Next**.
 4. Skip adding any initial integrations on this screen; click **Next** to proceed and click **Create**.
 5. From the left navigation menu, expand your API settings, go to **Stages**, and click **Create**.
 6. Set the parameters for your default deployment environment:
@@ -711,7 +731,7 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
 
 ---
 
-### Step 35: Attach the Private Resource Integration
+### Step 35: Attach HTTP Integration
 1. From the left panel under your API settings, choose **Develop** $\rightarrow$ **Integrations** $\rightarrow$ **Manage integrations** and click **Create**.
 2. Complete the resource target mapping details:
    * **Integration type:** `Private resource`
@@ -719,7 +739,7 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
    * **Target service:** `ALB/NLB`
    * **Load balancer:** Select your internal resource engine `Web App-alb` (or `Web-App-LB`)
    * **Listener:** Choose `HTTP:80`
-   * **VPC Link:** Select `ecommerce-vpc-link`
+   * **VPC Link:** Select `web-app-vpc-link`
 3. Click **Create integration**. This unified backend bridge will service your downstream path layouts.
 
 ---
@@ -752,7 +772,7 @@ Define how incoming public traffic is structured and secured. Navigate to **Deve
 * **Authorization:** `JWT`
 * **Authorizer:** Select `cognito-jwt-authorizer`
 
-#### Route 3: CORS Preflight Handler
+#### Route 3: CORS Preflight Route
 * **Method:** `OPTIONS`
 * **Resource path:** `/{proxy+}`
 * **Integration:** Select your existing ALB Integration
@@ -761,7 +781,6 @@ Define how incoming public traffic is structured and secured. Navigate to **Deve
 ---
 
 ### Step 38: Configure Cross-Origin Resource Sharing (CORS)
-To allow your frontend application running on S3/CloudFront to safely communicate with this backend API, you must loosen origin execution limits.
 
 1. Navigate to **Develop** $\rightarrow$ **CORS** and click **Configure**.
 2. Apply the following development settings:
