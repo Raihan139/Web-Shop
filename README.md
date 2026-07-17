@@ -353,796 +353,687 @@ Set up the infrastructure for the React frontend, configure it with the Cognito 
    * **Encryption:** Uncheck **Enable encryption**
 7. Click **Create database**. *The initial compilation run will take roughly 5 to 10 minutes to spin up clean endpoints.*
 
+### Step 20: Configure Systems Manager Parameter Store
+Store your environment variables centrally. The microservices automatically fetch these configurations at runtime.
 
+1. Navigate to the **Systems Manager Console**, select **Parameter Store**, and click **Create parameter**.
+2. Create the following parameters sequentially:
 
-Parameter Store - Configuration Management:
+| Parameter Name | Type | Value / Source |
+| :--- | :--- | :--- |
+| `/ecommerce/dev/aws/region` | `String` | Your target AWS region (e.g., `us-east-1`) |
+| `/ecommerce/dev/db/host` | `String` | Your RDS endpoint (Found in **RDS Console** → **Databases** → `ecommercedb-instance`) |
+| `/ecommerce/dev/db/password` | `SecureString` | The master database password you created in Step 19 |
 
-  Create Database Configuration Parameters:
+---
 
-  Systems Manager Console → Parameter Store → Create parameter
-  
-  AWS Region Parameter:\
-  Name: /ecommerce/dev/aws/region\
-  Type: String\
-  Value: <your-aws-region> (e.g. us-east-1)
-  
-  Database Host Parameter:\
-  Name: /ecommerce/dev/db/host\
-  Type: String\
-  Value: <your-rds-endpoint> (from RDS Console → Databases → ecommerce-db → Endpoint)\
-  Database Password Parameter:
+### Step 21: Deploy Backend Infrastructure (ECS & Internal ALB)
+Deploy the backend microservices as Docker containers on Amazon ECS via AWS Fargate. An internal Application Load Balancer (ALB) handles routing between services securely inside the private subnets.
 
-  Name: /ecommerce/dev/db/password\
-  Type: SecureString\
-  Value: <your-database-password>\
-  These parameters will be automatically loaded by the user-service and order-service when deployed to ECS.
+#### 1. Create the ALB Security Group
+1. Navigate to the **EC2 Console**, select **Security Groups**, and click **Create security group**.
+2. Configure the basic details:
+   * **Name:** `web-ALB-SG`
+   * **Description:** `"Security group for internal ALB"`
+   * **VPC:** Select `Web App-vpc`
+3. Add an **Inbound rule**:
+   * **Type:** `HTTP` (Port `80`)
+   * **Source:** Select `Custom` and enter `10.10.0.0/16`
+   * **Description:** `"Allow HTTP from VPC"`
+4. Keep **Outbound rules** set to their standard defaults (Allow all traffic) and click **Create security group**.
 
+#### 2. Pre-create the Service Target Groups
+Before launching the load balancer, create four separate IP-based target groups for the microservices. Navigate to **EC2 Console** → **Target Groups** → **Create target group**, select **IP addresses** as the target type, and use the following parameters for each:
 
-  Backend Services Deployment (ECS and ALB):
+* **Product Service Target Group:**
+  * **Name:** `product-tg` | **Port:** `8001` | **VPC:** `Web App-vpc` | **Health check path:** `/health`
+* **Cart Service Target Group:**
+  * **Name:** `cart-tg` | **Port:** `8002` | **VPC:** `Web App-vpc` | **Health check path:** `/health`
+* **User Service Target Group:**
+  * **Name:** `user-tg` | **Port:** `8003` | **VPC:** `Web App-vpc` | **Health check path:** `/health`
+* **Order Service Target Group:**
+  * **Name:** `order-tg` | **Port:** `8004` | **VPC:** `Web App-vpc` | **Health check path:** `/health`
 
-  Next, we deploy microservices using Docker containers on Amazon ECS with Fargate run time and internally expose the services using the internal Application Load Balancer.
-  
-Create Application Load Balancer (internal):
+#### 3. Provision the Internal Application Load Balancer
+1. Navigate to the **EC2 Console**, select **Load Balancers**, and click **Create load balancer**.
+2. Select **Application Load Balancer** and click **Create**.
+3. Complete the configuration wizard:
+   * **Name:** `Web-App-LB`
+   * **Scheme:** Select `Internal` *(Crucial: This keeps traffic inside your private network)*
+   * **IP address type:** `IPv4`
+4. Configure **Network mapping**:
+   * **VPC:** Select `Web App-vpc`
+   * **Subnets:** Select your **two private ECS subnets**
+5. Configure **Security groups & Listeners**:
+   * **Security groups:** Select `web-ALB-SG`
+   * **Listeners:** Keep `HTTP:80` and set the default action to **Forward to** `product-tg`.
+6. Click **Create load balancer**.
 
-Create ALB Security Group\
-EC2 Console → Security Groups → Create security group\
-Name: web-ALB-SG\
-Description: "Security group for internal ALB"\
-VPC: Select Web App-vpc\
-Inbound rules:\
-Type: HTTP, Port: 80, Source: 10.10.0.0/16 (VPC CIDR)\
-Description: "Allow HTTP from VPC"\
-Outbound rules: All traffic (default)\
-Create security group
+#### 4. Configure Path-Based Routing Listener Rules
+1. Select your new load balancer, go to the **Listeners** tab, select the `HTTP:80` listener, and click **View/edit rules**.
+2. Add four specific path-based conditional routing rules:
 
+| Condition (IF) | Action (THEN) | Weight |
+| :--- | :--- | :--- |
+| **Path is** `/products*` | **Forward to** `product-tg` | `1` |
+| **Path is** `/cart*` | **Forward to** `cart-tg` | `1` |
+| **Path is** `/users*` | **Forward to** `user-tg` | `1` |
+| **Path is** `/orders*` | **Forward to** `order-tg` | `1` |
 
-Create Target Groups:\
-Create 4 target groups for the microservices first (required for ALB creation):
+3. Save the listener rule changes.
 
-Product Service Target Group:\
-EC2 Console → Load Balancing -> Target Groups → Create target group\
-Target type: IP addresses\
-Target group name: product-tg\
-Protocol: HTTP, Port: 8001\
-VPC: Web App-vpc\
-Health check path: /health\
-Create target group
+#### 5. Register Microservice Discovery Over the ALB
+1. Copy the **DNS name** generated for your new `Web-App-LB` from the load balancer description screen.
+2. Return to the **Parameter Store** and save the base URLs for your microservices so they can talk to each other through the internal load balancer:
 
-Repeat for other services target groups:\
-Cart Service: cart-tg, Port: 8002\
-User Service: user-tg, Port: 8003\
-Order Service: order-tg, Port: 8004
+| Parameter Name | Type | Value |
+| :--- | :--- | :--- |
+| `/ecommerce/dev/user-service-url` | `String` | `http://<your-internal-alb-dns-name>` |
+| `/ecommerce/dev/cart-service-url` | `String` | `http://<your-internal-alb-dns-name>` |
+| `/ecommerce/dev/product-service-url` | `String` | `http://<your-internal-alb-dns-name>` |
+| `/ecommerce/dev/order-service-url` | `String` | `http://<your-internal-alb-dns-name>` |
 
+Note: Every backend service shares the identical internal ALB DNS name. Traffic is automatically directed to the correct microservice based on the path-based routing rules configured on the load balancer listener.
 
-Create Application Load Balancer:
+### Step 22: Create Amazon ECR Repositories
+1. Navigate to the **Amazon ECR Console**, select **Repositories**, and click **Create repository**.
+2. Create repositories for all four microservices using the naming conventions listed below:
 
-EC2 Console → Load Balancers → Create load balancer\
-Application Load Balancer → Create
+| Microservice | Target Repository Name |
+| :--- | :--- |
+| **Product Service** | `ecommerce/product-service` |
+| **Cart Service** | `ecommerce/cart-service` |
+| **User Service** | `ecommerce/user-service` |
+| **Order Service** | `ecommerce/order-service` |
 
-Basic configuration:\
-Name: Web-App-LB\
-Scheme: Internal\
-IP address type: IPv4
+---
 
-Network mapping:\
-VPC: Web App-vpc\
-Subnets: Select both private ECS subnets\
-Security groups: Select web-ALB-SG\
-Listeners: HTTP:80\
-Default action: Forward to product-tg\
-Create load balancer
+### Step 23: Build, Tag, and Push Docker Images
+> ⚠️ **Note:** Run these build and deployment commands from your local computer terminal, not from inside the AWS Management Console or an EC2 instance.
 
-Configure ALB Listener Rules
-
-Go to Load Balancer → Listeners → HTTP:80 → View/edit rules
-
-Add rules for path-based routing:\
-Product Service Rule:\
-IF: Path is /products*\
-THEN: Forward to product-service-tg
-
-Cart Service Rule:\
-IF: Path is /cart*\
-THEN: Forward to cart-service-tg
-
-User Service Rule:\
-IF: Path is /users*\
-THEN: Forward to user-service-tg
-
-Order Service Rule:\
-IF: Path is /orders*\
-THEN: Forward to order-service-tg
-
-Leave all the weight as 1
-
-Save rules
-  
-
-Create Parameter Store Parameters
-
-Service URL Parameters\
-Systems Manager Console → Parameter Store → Create parameter
-
-User Service URL:\
-Name: /ecommerce/dev/user-service-url\
-Type: String\
-Value: http://(internal-alb-dns-name) (get from ALB details)\
-Repeat for other services:
-
-/ecommerce/dev/cart-service-url → http://(internal-alb-dns-name) \
-/ecommerce/dev/product-service-url → http://(internal-alb-dns-name)\
-/ecommerce/dev/order-service-url → http://(internal-alb-dns-name)
-
-Note: All services use the same ALB DNS name. The ALB routes requests based on path.
-
-
-Create ECR Repositories:
-
-Create Repository for Product Service\
-ECR Console → Repositories → Create repository\
-Repository name: ecommerce/product-service\
-Create repository
-
-Repeat the above steps for the remaining 3 services.
-
-Validation Table\
-Create repositories for all services:
-
-   Service                    Repository Name\
-Product Service   -->	ecommerce/product-service\
-Cart Service	   -->   ecommerce/cart-service\
-User Service	   -->   ecommerce/user-service\
-Order Service	   -->   ecommerce/order-service
-
-
-Build and Push Docker Images:
-
-Note: Below CMDs need to be executed from the local machine (not from AWS console or EC2 instance).
-
-In the AWS console:
-
-Console: ECR Console → Repositories → Click any repository → Copy the URI (everything before the repository name)
-
-Build and Push Product Service Image:
-
-Get ECR login command:
-
+#### 1. Authenticate Your Local Docker Client
+Go to the **ECR Console**, open any repository, and copy your account's regional ECR URI registry prefix (everything before the repository name string). Log into your private registry with the AWS CLI:
+```bash
 aws ecr get-login-password --region <your-region> | docker login --username AWS --password-stdin <account-id>.dkr.ecr.<your-region>.amazonaws.com
+```
 
-
-Build the image:
-
-cd services/product-service\
+#### 2. Publish Product Service
+```bash
+cd services/product-service
 docker build -t ecommerce/product-service .
+docker tag ecommerce/product-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest
+```
+
+#### 3. Publish Cart Service
+```bash
+cd ../cart-service
+docker build -t ecommerce/cart-service .
+docker tag ecommerce/cart-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/cart-service:latest
+```
+
+#### 4. Publish User Service
+```bash
+cd ../user-service
+docker build -t ecommerce/user-service .
+docker tag ecommerce/user-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/user-service:latest
+```
+
+#### 5. Publish Order Service
+```bash
+cd ../order-service
+docker build -t ecommerce/order-service .
+docker tag ecommerce/order-service:latest <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest
+docker push <account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/order-service:latest
+```
+
+---
+
+### Step 24: Provision ECS Task IAM Permissions
+Assign the necessary operational resource access rules to your microservice container runtime.
+
+1. Navigate to the **IAM Console**, select **Roles**, and click **Create role**.
+2. Select **AWS service** as the trusted entity type.
+3. Set the service use case dropdowns to **Elastic Container Service** followed by **Elastic Container Service Task**, and click **Next**.
+4. Check the boxes to link these standard AWS managed access policies:
+   * `AmazonDynamoDBFullAccess_v2`
+   * `AmazonSSMReadOnlyAccess`
+   * `CloudWatchLogsFullAccess`
+   * `AmazonS3ReadOnlyAccess`
+   * `AmazonSNSFullAccess`
+5. Name the role `ecommerce-ecs-task-role` and click **Create role**.
+
+---
+
+### Step 25: Create the ECS Tasks Security Group
+Isolate your container computational layer by creating a restrictive traffic routing boundary.
+
+1. Open the **VPC Console**, select **Security Groups**, and click **Create security group**.
+2. Set the structural details:
+   * **Name:** `ecommerce-ecs-sg`
+   * **Description:** `"Security group for ECS tasks"`
+   * **VPC:** Select `Web App-vpc` (or `ecommerce-vpc`)
+3. Create four distinct **Inbound rules** mapped exclusively to your load balancer entry point:
+   * **Custom TCP** | Port `8001` | **Source:** `web-ALB-SG` (or `ecommerce-alb-sg`)
+   * **Custom TCP** | Port `8002` | **Source:** `web-ALB-SG` (or `ecommerce-alb-sg`)
+   * **Custom TCP** | Port `8003` | **Source:** `web-ALB-SG` (or `ecommerce-alb-sg`)
+   * **Custom TCP** | Port `8004` | **Source:** `web-ALB-SG` (or `ecommerce-alb-sg`)
+4. Keep the **Outbound rules** set to their standard defaults (Allow all traffic) and click **Create security group**.
+
+---
+
+### Step 26: Define the Product Service ECS Task Profile
+1. Navigate to the **Amazon ECS Console**, select **Task definitions**, and click **Create new task definition**.
+2. Define the basic application structure parameters:
+   * **Task definition family:** `ecommerce-product-service`
+   * **Launch type:** `AWS Fargate`
+   * **Operating system/Architecture:** `Linux/X86_64`
+   * **Task CPU:** `1 vCPU`
+   * **Task Memory:** `3 GB`
+   * **Task role:** `ecommerce-ecs-task-role`
+   * **Task execution role:** Select the option to create a default role (`ecsTaskExecutionRole`). *You will reuse this automatic execution role for the other remaining services.*
+3. Configure the **Container definition** properties:
+   * **Container name:** `product-service`
+   * **Image URI:** `<account-id>.dkr.ecr.<your-region>.amazonaws.com/ecommerce/product-service:latest`
+   * **Port mappings:** Container port `8001` | Protocol `TCP`
+4. Add the local runtime lifecycle environment variables:
+   * `ENVIRONMENT` = `dev`
+   * `AWS_REGION` = `<your-region>`
+5. Turn on the **Log configuration** framework:
+   * **Log driver:** `awslogs`
+   * **Log group:** `/ecs/product-service`
+   * **Region:** `<your-region>`
+   * **Stream prefix:** `ecs`
+6. Click **Create**.
+
+Note: Repeat these exact configuration steps to create task definitions for the Cart, User, and Order services. Make sure to adjust the container names, port numbers, image URIs, and CloudWatch log groups to match each specific microservice layout.
+
+### Step 27: ECS Task Definitions Overview
+Ensure you have created a task definition for each of your microservices using the specifications below:
+
+| Service | Task Definition Family | CPU | Memory | Port |
+| :--- | :--- | :--- | :--- | :--- |
+| **Product Service** | `ecommerce-product-service` | 1 vCPU | 3 GB | 8001 |
+| **Cart Service** | `ecommerce-cart-service` | 1 vCPU | 3 GB | 8002 |
+| **User Service** | `ecommerce-user-service` | 1 vCPU | 3 GB | 8003 |
+| **Order Service** | `ecommerce-order-service` | 1 vCPU | 3 GB | 8004 |
+
+---
+
+### Step 28: Spin up the ECS Cluster and Services
+
+#### 1. Create the ECS Cluster
+1. Navigate to the **Amazon ECS Console**, select **Clusters**, and click **Create cluster**.
+2. Set the **Cluster name** to `ecommerce-cluster`.
+3. Under **Infrastructure**, select **AWS Fargate (serverless)** only.
+4. Click **Create**.
+
+#### 2. Provision the Microservices
+Navigate to your new `ecommerce-cluster`, go to the **Services** tab, and click **Create**. Use the following reference table to deploy all four microservices to the cluster sequentially:
+
+| Parameter | Product Service | Cart Service | User Service | Order Service |
+| :--- | :--- | :--- | :--- | :--- |
+| **Compute options** | Launch type (Fargate) | Launch type (Fargate) | Launch type (Fargate) | Launch type (Fargate) |
+| **Task Definition** | `ecommerce-product-service:1` | `ecommerce-cart-service:1` | `ecommerce-user-service:1` | `ecommerce-order-service:1` |
+| **Service Name** | `ecommerce-product-service` | `ecommerce-cart-service` | `ecommerce-user-service` | `ecommerce-order-service` |
+| **Desired Tasks** | `1` | `1` | `1` | `1` |
+| **VPC** | `Web App-vpc` | `Web App-vpc` | `Web App-vpc` | `Web App-vpc` |
+| **Subnets** | Both private ECS subnets | Both private ECS subnets | Both private ECS subnets | Both private ECS subnets |
+| **Security Group** | `ecommerce-ecs-sg` | `ecommerce-ecs-sg` | `ecommerce-ecs-sg` | `ecommerce-ecs-sg` |
+| **Public IP** | Turned off | Turned off | Turned off | Turned off |
+| **Load Balancing** | Enable Load Balancing | Enable Load Balancing | Enable Load Balancing | Enable Load Balancing |
+| **Load Balancer** | `ecommerce-internal-alb` | `ecommerce-internal-alb` | `ecommerce-internal-alb` | `ecommerce-internal-alb` |
+| **Target Group** | `product-service-tg` | `cart-service-tg` | `user-service-tg` | `order-service-tg` |
+
+---
+
+### Step 29: Validate Deployment Health Status
+
+#### 1. Monitor Container Lifecycle
+Navigate to **ECS Console** → **Clusters** → `ecommerce-cluster` → **Services**. Confirm that all four microservices match the following parameters:
+* **Status:** `Active`
+* **Running tasks:** `1`
+* **Desired tasks:** `1`
+
+#### 2. Audit Target Routing Groups
+Navigate to **EC2 Console** → **Load Balancing** → **Target Groups**. Inspect each target group and confirm:
+* **Registered targets:** `1`
+* **Health status:** `Healthy` (Passed initial HTTP `/health` probes)
+
+---
+
+### Step 30: End-to-End API Integration Testing
+Because the Application Load Balancer is strictly internal, you cannot access its URL from the open internet. We will deploy a temporary public Bastion Host to test the microservices and terminate it immediately after verification.
+
+#### 1. Spin up the Bastion Host
+1. Navigate to the **EC2 Console** and click **Launch instance**.
+2. Configure the system parameters:
+   * **Name:** `web-app-bastion`
+   * **AMI:** `Amazon Linux 2023`
+   * **Instance type:** `t3.micro`
+   * **Key pair:** Select an existing key pair or generate a new one
+3. Modify the **Network settings**:
+   * **VPC:** `Web App-vpc`
+   * **Subnet:** Select any **public subnet**
+   * **Auto-assign public IP:** Select `Enable`
+   * **Security group:** Choose **Create security group**
+   * **Security group name:** `ecommerce-bastion-sg`
+   * **Inbound rule:** `SSH` (Port 22) | **Source:** Select `My IP`
+4. Click **Launch instance**.
+
+#### 2. Execute Local API Route Testing
+1. Connect to your newly deployed ec2 instance via SSH:
+   ```bash
+   ssh -i your-key.pem ec2-user@<bastion-public-ip>
+   ```
+2. Run a curl command against the internal routing endpoint to pull the live database catalogs:
+   ```bash
+   curl http://<internal-alb-dns-name>/products
+   ```
+3. If everything is configured correctly, the terminal will return a JSON list containing your 20 live product inventory entries.
+
+#### 3. Cleanup Resources
+> ⚠️ **Important:** To prevent unnecessary billing charges, navigate back to the **EC2 Console**, select `web-app-bastion`, and choose **Instance State** → **Terminate instance**. This server is no longer needed.
+
+### Step 31: Infrastructure Troubleshooting Guide
+If any of your microservices fail to boot up or crash during testing, use the following isolation steps to diagnose and repair your deployment.
+
+#### 1. Audit Runtime System Diagnostics (CloudWatch Logs)
+When a task fails to reach a steady `Running` state, the internal container stdout will capture the underlying error. Check your log streams directly:
+1. Navigate to the **CloudWatch Console** and click on **Log groups** under the Logs menu.
+2. Search and monitor the dedicated streams for your specific failing microservice:
+   * `/ecs/product-service`
+   * `/ecs/cart-service`
+   * `/ecs/user-service`
+   * `/ecs/order-service`
+
+#### 2. Resolving Boot Failures (Service Stuck in Pending/Crashing)
+* **Verify ECR Image URIs:** Double-check that your active ECS Task Definition references the exact image address string generated by your private ECR registry.
+* **Audit Active Environment Keys:** Open your container definition wizard and ensure that baseline runtime keys (like `ENVIRONMENT` or `AWS_REGION`) are fully mapped.
+* **Validate IAM Policy Attachment:** Verify that the `ecommerce-ecs-task-role` is properly assigned to the task definition profile so containers have legal credentials to run.
+
+#### 3. Fixing Load Balancer Probe Drops (Health Check Failures)
+* **Validate Code Routes:** Confirm that a lightweight `/health` routing endpoint exists and returns an HTTP status `200 OK` within your application source code.
+* **Review Network Access Rules:** Confirm that your `ecommerce-ecs-sg` security group includes active inbound TCP permissions on ports `8001`–`8004` that match the source group `web-ALB-SG`.
+
+#### 4. Debugging System Variable Fetches (Parameter Store Drops)
+* **Check Key Casing:** Systems Manager keys are explicitly **case-sensitive**. Ensure strings like `/ecommerce/dev/db/host` match perfectly in your service lookup files.
+* **Confirm Regional Boundaries:** Verify that your global deployment parameter strings were published directly inside the active region (e.g., `us-east-1`) rather than a different default setup.
+
+### Step 32: Deploy the Public API Gateway
+Provision an Amazon API Gateway (HTTP API) to link with your internal Application Load Balancer via a VPC Link. This acts as the public entry point for your microservices while implementing JWT authentication through Amazon Cognito.
+
+#### Route Architecture Setup
+* **`GET /products`** $\rightarrow$ Routes to **Product Service** (Public / Unauthenticated).
+* **`ANY /{proxy+}`** $\rightarrow$ Routes to **All Services** (Protected / Requires Cognito JWT Token).
+* **`OPTIONS /{proxy+}`** $\rightarrow$ Handles **CORS Preflight** (Public / Unauthenticated).
+
+---
+
+### Step 33: Configure the VPC Link Component
+
+#### 1. Establish the Network Access Control Group
+1. Open the **VPC Console**, select **Security Groups**, and click **Create security group**.
+2. Complete the standard metadata options:
+   * **Name:** `ecommerce-vpclink-sg`
+   * **Description:** `"Security group for VPC Link to ALB"`
+   * **VPC:** Select your primary network `Web App-vpc` (or `ecommerce-vpc`)
+3. Create two inbound rules to permit proxy traffic:
+   * **HTTP** | Port `80` | **Source:** `0.0.0.0/0`
+   * **HTTPS** | Port `443` | **Source:** `0.0.0.0/0`
+4. Leave the outbound rule default tracking enabled (Allow all traffic) and click **Create security group**.
+
+#### 2. Provision the VPC Private Link Bridge
+1. Open the **API Gateway Console**, select **VPC Links** from the left-side navigation panel, and click **Create**.
+2. Choose **VPC Link for HTTP APIs (v2)**.
+3. Configure the link parameters:
+   * **Name:** `ecommerce-vpc-link`
+   * **VPC:** Select `Web App-vpc`
+   * **Subnets:** Select your **two private ECS subnets** (`ecommerce-private-ecs-1` & `ecommerce-private-ecs-2`)
+   * **Security groups:** Attach your newly generated `ecommerce-vpclink-sg`
+4. Click **Create**. 
+> ⏳ **Note:** Establishing a VPC Link takes between 5 to 10 minutes. Wait until the dashboard status turns green and reads **Available** before starting the next configuration phase.
+
+---
+
+### Step 34: Spin up the HTTP API Core Service
+1. Navigate to the **API Gateway Console**, select **APIs**, and click **Create API**.
+2. Find the **HTTP API** card options block and click **Build**.
+3. Name your instance `ecommerce-api` and click **Next**.
+4. Skip adding any initial integrations on this screen; click **Next** to proceed and click **Create**.
+5. From the left navigation menu, expand your API settings, go to **Stages**, and click **Create**.
+6. Set the parameters for your default deployment environment:
+   * **Stage name:** `$default`
+   * **Auto-deploy:** Ensure this toggle box is checked
+7. Click **Create**.
+
+---
+
+### Step 35: Attach the Private Resource Integration
+1. From the left panel under your API settings, choose **Develop** $\rightarrow$ **Integrations** $\rightarrow$ **Manage integrations** and click **Create**.
+2. Complete the resource target mapping details:
+   * **Integration type:** `Private resource`
+   * **Method mapping selection:** Click **Select Manually**
+   * **Target service:** `ALB/NLB`
+   * **Load balancer:** Select your internal resource engine `Web App-alb` (or `Web-App-LB`)
+   * **Listener:** Choose `HTTP:80`
+   * **VPC Link:** Select `ecommerce-vpc-link`
+3. Click **Create integration**. This unified backend bridge will service your downstream path layouts.
+
+---
+
+### Step 36: Configure the Cognito JWT Authorizer
+Protect your write endpoints and sensitive business routes using Cognito security profiles.
+
+1. Inside your active API configuration tree, click **Authorization** under the Develop sub-menu, select the **Authorizers** tab, and click **Create**.
+2. Configure your validation settings:
+   * **Name:** `cognito-jwt-authorizer`
+   * **Authorizer type:** `JWT`
+   * **Identity source:** `$request.header.Authorization`
+   * **Issuer URL:** `https://cognito-idp.<your-region>.amazonaws.com/<user-pool-id>`
+   * **Audience:** Enter your private `<your-app-client-id>` key string saved from Step 9
+3. Click **Create authorizer**.
+
+### Step 37: Map API Gateway Routes
+Define how incoming public traffic is structured and secured. Navigate to **Develop** $\rightarrow$ **Routes** and click **Create** to establish the following three pathways:
+
+#### Route 1: Public Products Catalog
+* **Method:** `GET`
+* **Resource path:** `/products`
+* **Integration:** Select your existing ALB Integration
+* **Authorization:** `None` (Public access)
+
+#### Route 2: Protected Application Proxy
+* **Method:** `ANY`
+* **Resource path:** `/{proxy+}`
+* **Integration:** Select your existing ALB Integration
+* **Authorization:** `JWT`
+* **Authorizer:** Select `cognito-jwt-authorizer`
+
+#### Route 3: CORS Preflight Handler
+* **Method:** `OPTIONS`
+* **Resource path:** `/{proxy+}`
+* **Integration:** Select your existing ALB Integration
+* **Authorization:** `None` (Public access)
+
+---
+
+### Step 38: Configure Cross-Origin Resource Sharing (CORS)
+To allow your frontend application running on S3/CloudFront to safely communicate with this backend API, you must loosen origin execution limits.
+
+1. Navigate to **Develop** $\rightarrow$ **CORS** and click **Configure**.
+2. Apply the following development settings:
+   * **Access-Control-Allow-Origin:** `*` *(or bind strictly to your static CloudFront domain name)*
+   * **Access-Control-Allow-Headers:** `*` *(Permitting all headers ensures custom `Authorization` JWT tokens route cleanly without blocking)*
+   * **Access-Control-Allow-Methods:** Select `GET`, `POST`, `PUT`, `DELETE`, and `OPTIONS`.
+3. Click **Save**.
+
+---
+
+### Step 39: Execute Integration Validation Checks
+
+#### 1. Retrieve the Live Deployment String
+Go to the **Stages** panel, click into your `$default` stage environment configuration, and copy the auto-generated **Invoke URL** (e.g., `https://xxxxxxxxxx.execute-api.<your-region>.amazonaws.com`).
+
+#### 2. Verify Public Catalog Access
+Run a standard curl request from your local machine terminal against the product catalog route. It should complete instantly without token processing:
+```bash
+curl https://xxxxxxxxxx.execute-api.<your-region>.amazonaws.com/products
+```
+
+#### 3. Confirm Route Security Enforcement
+Test the rest of your transactional endpoints. Because they are bound to the `ANY /{proxy+}` path, they should actively reject raw traffic:
+```bash
+curl https://xxxxxxxxxx.execute-api.<your-region>.amazonaws.com/cart
+curl https://xxxxxxxxxx.execute-api.<your-region>.amazonaws.com/users
+curl https://xxxxxxxxxx.execute-api.<your-region>.amazonaws.com/orders
+```
+* **Expected System Output:** `{"message":"Unauthorized"}` (HTTP Status `401`). This confirms your Cognito JWT authorizer is working as intended.
+
+### Step 40: API Gateway Troubleshooting Matrix
+If your public API traffic encounters routing errors or drops, trace the symptoms using this baseline failure matrix:
+
+#### 1. CORS Preflight Failures (`Access-Control-Allow-Origin` Drops)
+* **Verify Header Flags:** Ensure your API Gateway CORS setup includes `Access-Control-Allow-Headers: *` explicitly.
+* **Audit Preflight Targets:** Double-check that your `OPTIONS /{proxy+}` routing target exists and uses the shared, open internal ALB integration without authentication profiles attached.
+
+#### 2. Auth Rejections (`401 Unauthorized`)
+* **Match Issuer Keys:** Confirm that your authorizer's regional Cognito User Pool ID URI string doesn't contain typos or wrong regions.
+* **Match Target Audiences:** Ensure the API Gateway authorizer audience parameter string matches your application's client registration ID.
+
+#### 3. Integration Routing Failures (`502 Bad Gateway`)
+* **Check Transport Pipelines:** Open the **API Gateway Console** $\rightarrow$ **VPC Links** and confirm that the connectivity state reads `Available`.
+* **Trace Backend Points:** Confirm your private integration targets the correct internal ALB DNS endpoint name over port `80`.
+* **Audit Core Health Probes:** Confirm that target groups under the load balancer show at least 1 healthy computational node container running.
+
+#### 4. Upstream Dropped Packets (`504 Gateway Timeout`)
+* **Verify Compute States:** Open the ECS cluster console and confirm that tasks are not crashing or looping during execution.
+* **Audit Network Access Group Boundaries:** 
+  * The `ecommerce-vpclink-sg` security group must explicitly accept inbound HTTP/HTTPS traffic from `0.0.0.0/0`.
+  * The internal `web-ALB-SG` load balancer security group must explicitly accept inbound HTTP traffic originating from your full VPC CIDR range (`10.10.0.0/16`).
+
+---
+
+### Step 41: Final Frontend-Backend Stack Integration
+With a validated, live gateway routing traffic up to your compute stack, patch your frontend build parameters to point directly to the public API link.
+
+#### 1. Update the Frontend Network Configuration
+1. Open your terminal and jump into your project root folder repository:
+   ```bash
+   cd frontend/react-app
+   ```
+2. Open `src/aws-config.js` and paste your secure API execution root into the empty `baseUrl` parameter string:
+   ```javascript
+   const awsConfig = {
+     Auth: {
+       Cognito: {
+         userPoolId: '<COGNITO_USER_POOL_ID>',       // Already configured in Step 14
+         userPoolClientId: '<COGNITO_CLIENT_ID>',    // Already configured in Step 14
+         loginWith: {
+           email: true,
+         },
+       }
+     },
+     API: {
+       baseUrl: '<API_GATEWAY_URL>'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com
+     }
+   };
+   
+   export default awsConfig;
+   ```
+
+#### 2. Compile and Sync the Assets
+1. Compile your application production bundle and clear out outdated remote distribution tracking variables:
+   ```bash
+   npm run build
+   aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
+   ```
+
+#### 3. Clear the Edge Cache Layer (CloudFront Invalidation)
+Because CloudFront securely mirrors your content across worldwide points of presence, edge systems will serve old configurations until the cache expires or is forced to clear.
+1. Open the **CloudFront Console**, select your project's distribution, and switch over to the **Invalidations** tab.
+2. Click **Create invalidation**.
+3. Type `/*` into the object paths text input box and click **Create invalidation**.
+> ⏱️ **Note:** The purge process typically routes across global servers and completes in under 1 minute. Once finished, load your CloudFront URL in your browser to verify a fully functioning deployment.
+
+### Step 42: End-to-End Application Testing
+1. Launch your browser and navigate to your production endpoint: `https://<your-cloudfront-domain>`
+2. Walk through the complete user funnel to confirm that every microservice layer is fully unified:
+   * Register a test user account and complete the email verification loop.
+   * Log in, browse the product catalog grid, and review individual product details.
+   * Add items to your shopping cart, progress to checkout, and place a mock order.
+   * Open your account dashboard to ensure your purchase history updates successfully.
+
+---
+
+### Step 43: Deploy Event-Driven Notification Layers (SNS & SQS)
+Implement a decoupled, event-driven messaging layer to broadcast transaction updates. When an order is completed, Amazon SNS fanouts notifications to a vendor processing queue and directly fires a confirmation email to system administrators.
+
+> ℹ️ **Design Note:** In a standard production layout, transactional emails should route through **Amazon SES (Simple Email Service)** via an AWS Lambda subscription. However, because new AWS accounts place Amazon SES inside a restrictive Sandbox environment by default—which requires a formal AWS support case and a multi-day review to lift—we will bypass this hurdle for our development run by sending messages directly to a fixed email address using native **Amazon SNS** capabilities.
+
+#### 1. Provision the SNS Pub/Sub Topic
+1. Open the **Amazon SNS Console**, click **Topics** on the left menu panel, and click **Create topic**.
+2. Configure the core structural settings:
+   * **Type:** Select `Standard`
+   * **Name:** `ecommerce-order-events`
+   * **Display name:** `eCommerce Order Events`
+3. Click **Create topic**.
+4. Copy the unique **Topic ARN** from the details dashboard (e.g., `arn:aws:sns:<your-region>:<your-account-id>:ecommerce-order-events`) and save it to your notepad.
+
+#### 2. Provision the SQS Vendor Processing Queue
+1. Navigate to the **Amazon SQS Console**, click **Queues** on the left menu panel, and click **Create queue**.
+2. Configure the messaging line settings:
+   * **Type:** Select `Standard`
+   * **Name:** `ecommerce-order-shipping`
+3. Click **Create queue**.
+4. Copy the **Queue ARN** string from the configuration page summaries block.
+
+---
+
+### Step 44: Link Messaging Subscriptions
+
+#### 1. Attach the Administrative Email Pipeline
+1. Return to your `ecommerce-order-events` topic dashboard, find the **Subscriptions** tab, and click **Create subscription**.
+2. Complete the communication parameters:
+   * **Protocol:** Select `Email`
+   * **Endpoint:** Provide your personal email account address (e.g., `admin@yourdomain.com`)
+3. Click **Create subscription**.
+4. ⚠️ **Action Required:** Open your email client inbox, find the validation message from AWS Notifications, and click the **Confirm subscription** link. Verify that the subscription status updates to **Confirmed** inside the SNS management console.
+
+#### 2. Attach the SQS Fulfillment Pipeline
+1. Click **Create subscription** inside your SNS topic panel again to hook up your shipping infrastructure:
+   * **Protocol:** Select `Amazon SQS`
+   * **Endpoint:** Choose or paste your target `ecommerce-order-shipping` Queue ARN
+2. Click **Create subscription**.
+3. *Verification Step:* This direct mapping automatically patches the SQS Queue Access Policy with the explicit `SQS:SendMessage` condition rules required for SNS to push events into it. You can check this by reviewing the **Access policy** JSON block under your SQS settings.
+
+---
+
+### Step 45: Publish Variables and Cycle Backend Compute
+
+#### 1. Register the Topic Endpoint
+1. Open the **Systems Manager Console**, select **Parameter Store**, and click **Create parameter**.
+2. Register the routing location so the order microservice can locate the notification channel:
+   * **Name:** `/ecommerce/dev/sns/topic-arn`
+   * **Type:** `String`
+   * **Value:** Paste your copied `arn:aws:sns:<your-region>:<your-account-id>:ecommerce-order-events` payload
+3. Click **Create parameter**.
+
+#### 2. Perform an In-Place Service Refresh
+Because the order container instances only query the Parameter Store during their boot sequence, you must force a cluster update to inject the new SNS credentials:
+1. Navigate to the **Amazon ECS Console**, choose your cluster, and select the `ecommerce-order-service` item block.
+2. Click **Update service** (or **Deploy** dropdown options) and check the **Force new deployment** checkbox toggle.
+3. Click **Update** and wait until the cluster provisions a new healthy task container while cleanly draining old execution instances.
+
+---
+
+### Step 46: Verify the Event-Driven Workflow
+1. Load your live storefront app via your CloudFront URL and purchase an item.
+2. **Validate Email Routing:** Check your email inbox. You should receive a raw text message containing your order transaction payload directly from AWS Notifications.
+3. **Validate Queue Operations:**
+   * Open the **SQS Console** and click into your `ecommerce-order-shipping` queue.
+   * Click **Send and receive messages** from the top right actions block.
+   * Scroll down to the messages section and click **Poll for messages**.
+   * Open the pulled payload packet to confirm that the order event details perfectly mirrored down into your vendor processing layer.
+
+### Step 47: Configure Custom Domain & SSL (HTTPS)
+Migrate your application from the default AWS development URLs to a branded custom domain name secured with an SSL/TLS certificate.
+
+#### Prerequisites
+* A registered public domain name (purchased through Amazon Route 53 or an external registrar like GoDaddy or Namecheap).
+* Amazon Route 53 set up as the primary DNS management service for your domain.
+
+---
+
+### Step 48: Establish the Route 53 Public Hosted Zone
+If you have not already linked your domain to Route 53, create a hosted zone to manage your public DNS entries:
+1. Navigate to the **Route 53 Console**, click **Hosted zones** in the left menu, and select **Create hosted zone**.
+2. Provide your core domain properties:
+   * **Domain name:** `yourdomain.com`
+   * **Type:** `Public hosted zone`
+3. Click **Create hosted zone**.
+4. Locate the auto-generated **NS (Name Server)** record block containing four distinct server addresses.
+5. ⚠️ **Critical Action:** Copy these four addresses and update the custom name server fields at your third-party domain registrar to route your internet traffic through AWS.
+
+---
+
+### Step 49: Provision an SSL/TLS Certificate (AWS Certificate Manager)
+
+#### 1. Request the Certificate
+1. Open the **AWS Certificate Manager (ACM) Console**.
+2. ⚠️ **Important Region Requirement:** You must switch your active AWS region console dropdown to **us-east-1 (N. Virginia)**. CloudFront can only attach certificates that are stored in the `us-east-1` region.
+3. Click **Request certificate** and choose **Request a public certificate**.
+4. Add the explicit domain pathways you intend to secure:
+   * `yourdomain.com`
+   * `www.yourdomain.com`
+   * `*.yourdomain.com` *(Optional: include this wildcard format if you plan to support custom staging or testing subdomains later)*
+5. Set the **Validation method** to **DNS validation** and click **Request**.
+
+#### 2. Validate Domain Ownership
+1. From your ACM dashboard, click on the **Certificate ID** you just generated.
+2. Inside the validation status block, click the **Create records in Route 53** button.
+3. Review the structural configurations and click **Create records**. This automatically injects the required verification CNAME values directly into your hosted zone.
+4. Wait roughly 1 to 2 minutes for network synchronization. The status badge will update from Pending to a green **Issued** state.
+
+---
+
+### Step 50: Link the Custom Domain to CloudFront
+1. Navigate to the **CloudFront Console**, click on your project's active distribution, and select **Edit** from the **General** settings panel.
+2. Adjust the baseline server properties:
+   * **Alternate domain names (CNAMEs):** Click add item and type `yourdomain.com`, then click add item again and type `www.yourdomain.com`.
+   * **Custom SSL certificate:** Click the dropdown selection box and choose your newly issued ACM certificate.
+3. Scroll to the bottom and click **Save changes**. 
+> ⏳ **Note:** CloudFront takes roughly 5 to 10 minutes to safely provision your encryption keys across all global edge locations.
+
+---
+
+### Step 51: Map the Public Route 53 DNS Records
+Map your top-level domain and its subdomains directly to your globally distributed CloudFront network infrastructure.
+
+#### 1. Configure the Root Domain Mapping (Apex Record)
+1. Go back to the **Route 53 Console** and click into your domain's active hosted zone.
+2. Click **Create record** and apply the following settings:
+   * **Record name:** Leave this completely blank *(this targets the absolute root domain `yourdomain.com`)*
+   * **Record type:** `A - Routes traffic to an IPv4 address and some AWS resources`
+   * **Alias:** Toggle this switch box **On**
+   * **Route traffic to:** Select **Alias to CloudFront distribution**
+   * **Choose distribution:** Select your active project CloudFront configuration from the list.
+   * **Routing policy:** Choose `Simple routing`
+3. Click **Create records**.
+
+#### 2. Configure the World Wide Web Mapping (WWW Record)
+1. Click **Create record** a second time to configure the sub-routing pathway:
+   * **Record name:** Enter `www`
+   * **Record type:** `A`
+   * **Alias:** Toggle this switch box **On**
+   * **Route traffic to:** Select **Alias to CloudFront distribution**
+   * **Choose distribution:** Select your same active CloudFront distribution.
+2. Click **Create records**.
+
+---
+
+### Step 52: Update Cognito Authentication Callback Targets
+Because your browser application redirects users back to the frontend after they complete sign-in steps, you must update Cognito's legal endpoint whitelist with your new secure addresses.
+
+1. Open the **Cognito Console**, click **User pools**, and select your project's pool.
+2. Expand the **App integration** tab, scroll to **App clients**, and choose **Edit** on your client instance.
+3. Locate the **Hosted UI settings** block and update your routing locations:
+   * **Allowed callback URLs:** Append `https://yourdomain.com` and `https://www.yourdomain.com` to the listing.
+   * **Allowed sign-out URLs:** Append `https://yourdomain.com` and `https://www.yourdomain.com` to the listing.
+4. Click **Save changes**.
+
+---
+
+### Step 53: Production-Ready Verification Testing
+1. Launch an absolute clean browser session (or private browsing tab) and navigate to your production URL: `https://yourdomain.com`
+2. Look at the address URL bar to verify that the **padlock icon** shows as secure and valid, showing that your custom SSL certificate is working correctly.
+3. Test your full application lifecycle features end-to-end:
+   * Confirm product item blocks pull smoothly without error (validating public API Gateway routing).
+   * Register or log in to a profile account (validating public domain Cognito handshakes).
+   * Modify your cart, initiate checkout, complete an order, and verify that your confirmation emails and fulfillment vendor SQS messages trigger successfully.
+
+🎉 **Congratulations!** You have successfully deployed a production-ready, highly available, secure, microservice-based e-commerce platform across an automated AWS Fargate serverless ecosystem.
 
-Tag the image:\
-docker tag ecommerce/product-service:latest (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
-
-Push the image:\
-docker push (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
-
-Build and Push other services
-
-Note: Make sure to change to each service directory before building.
-
-Cart Service:\
-cd ../cart-service  # Navigate to cart-service directory\
-docker build -t ecommerce/cart-service .\
-docker tag ecommerce/cart-service:latest (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/cart-service:latest\
-docker push (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/cart-service:latest
-
-User Service:\
-cd ../user-service  # Navigate to user-service directory\
-docker build -t ecommerce/user-service .\
-docker tag ecommerce/user-service:latest (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/user-service:latest\
-docker push (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/user-service:latest
-
-Order Service:\
-cd ../order-service  # Navigate to order-service directory\
-docker build -t ecommerce/order-service .\
-docker tag ecommerce/order-service:latest (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/order-service:latest\
-docker push (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/order-service:latest
-
-
-Create IAM Role for ECS Tasks
-
-Create ECS Task Role\
-IAM Console → Roles → Create role\
-Trusted entity type: AWS service\
-Service: Elastic Container Service\
-Use case: Elastic Container Service Task\
-Next
-
-Attach permissions policies:
-
-Add the following AWS managed policies:
-
-AmazonDynamoDBFullAccess_v2 (use v2 for better security)\
-AmazonSSMReadOnlyAccess\
-CloudWatchLogsFullAccess\
-AmazonS3ReadOnlyAccess\
-AmazonSNSFullAccess\
-Role name: ecommerce-ecs-task-role\
-Create role
-
-Create ECS Security Group
-
-ECS Tasks Security Group\
-VPC Console → Security Groups → Create security group\
-Name: ecommerce-ecs-sg\
-Description: "Security group for ECS tasks"\
-VPC: Select ecommerce-vpc\
-Inbound rules:\
-Type: Custom TCP, Port: 8001, Source: ecommerce-alb-sg\
-Type: Custom TCP, Port: 8002, Source: ecommerce-alb-sg\
-Type: Custom TCP, Port: 8003, Source: ecommerce-alb-sg\
-Type: Custom TCP, Port: 8004, Source: ecommerce-alb-sg\
-Outbound rules: All traffic (default)\
-Create security group
-
-Create ECS Task Definitions:\
-
-Create Task Definition for Product Service:
-
-ECS Console → Task definitions → Create new task definition\
-Task definition family: ecommerce-product-service\
-Launch type: AWS Fargate\
-Operating system: Linux/X86_64\
-CPU: 1 vCPU\
-Memory: 3 GB\
-Task role: ecommerce-ecs-task-role\
-Task execution role: Create default role (This should create a role ecsTaskExecutionRole automatically which will be reused for other services.)
-
-Container definition:
-
-Container name: product-service
-
-Image URI: (account-id).dkr.ecr.(your-region).amazonaws.com/ecommerce/product-service:latest
-
-Port mappings: Container port 8001, Protocol TCP
-
-Environment variables:\
-ENVIRONMENT = dev\
-AWS_REGION = (your-region)\
-Log configuration:
-
-Log driver: awslogs\
-Log group: /ecs/product-service\
-Region: (your-region)\
-Stream prefix: ecs
-
-Create task definition
-
-Repeat the above steps for the remaining 3 services, changing the port numbers and image URIs accordingly.
-
-Create task definitions for all services:
-
-Service	              Task Definition	        CPU      Memory 	Port\
-Product Service 	ecommerce-product-service 	1 vCPU 	   3 GB   	8001\
-Cart Service	   ecommerce-cart-service   	1 vCPU 	   3 GB  	8002\
-User Service 	   ecommerce-user-service 	   1 vCPU 	   3 GB  	8003\
-Order Service 	   ecommerce-order-service	   1 vCPU 	   3 GB 	   8004
-
-Create ECS Cluster and Services
-
-Create ECS Cluster\
-ECS Console → Clusters → Create cluster\
-Cluster name: ecommerce-cluster\
-Infrastructure: Fargate Only (serverless)\
-Create cluster
-
-Create ECS Service for Product Service\
-Go to cluster → Services → Create service\
-Launch type: Fargate\
-Task definition: ecommerce-product-service:1\
-Service name: ecommerce-product-service\
-Desired tasks: 1\
-Networking - VPC: Web App-vpc\
-Subnets: Select both private ECS subnets (deselect rest of the subnets if they are auto selected)\
-Security group: ecommerce-ecs-sg\
-Public IP: Turned off\
-Load Balancing: Enable "Use load balancing"\
-Load balancer type: Application Load Balancer\
-Load balancer: ecommerce-internal-alb\
-Target group: product-service-tg\
-Create service
-
-Repeat the above steps for the remaining 3 services.
-
-Create services for all microservices:
-
-Service	                ECS Service Name	             Target Group       	Desired Tasks\
-Product Service   	ecommerce-product-service  	  product-service-tg       	1\
-Cart Service 	      ecommerce-cart-service	        cart-service-tg	            1\
-User Service	      ecommerce-user-service	        user-service-tg	            1\
-Order Service	      ecommerce-order-service	        order-service-tg	         1
-
-Verify ECS Services
-
-Check Service Status\
-ECS Console → Clusters → ecommerce-cluster → Services\
-Verify that all 4 services show as below:\
-Status: Active\
-Running tasks: 1\
-Desired tasks: 1
-
-Check Target Group Health\
-EC2 Console -> Load Balancer → Target Groups\
-For each target group, verify:\
-Registered targets: 1\
-Health status: Healthy
-
-Test API Endpoints:
-
-Launch a Bastion Host for testing only as we can't directly access the internal ALB URL. We will terminate the instance after validation
-
-
-Create Bastion Host:
-
-EC2 Console → Launch Instance\
-Name: web-app-bastion\
-AMI: Amazon Linux 2023\
-Instance type: t3.micro\
-Key pair: Select or create a key pair\
-Network settings:\
-VPC: Web App-vpc\
-Subnet: Select a public subnet\
-Auto-assign public IP: Enable\
-Security group: Create new\
-Name: ecommerce-bastion-sg\
-SSH (22) from your IP address\
-Launch instance
-
-
-Test API Endpoints:
-
-SSH into bastion host:\
-ssh -i your-key.pem ec2-user@(bastion-public-ip)
-
-Test product service:\
-curl http://(internal-alb-dns-name)/products
-
-At this point it should return the list of all the products.
-
-Stop or terminate the bastion host ec2 instance after validation. It is not required anymore.
-
-Troubleshooting Steps (If needed):
-
-Check CloudWatch Logs\
-If services are not starting properly, check the logs:
-
-CloudWatch Console → Log groups\
-Check these log groups:\
-/ecs/product-service\
-/ecs/cart-service\
-/ecs/user-service\
-/ecs/order-service\
-Service not starting:
-
-Check ECR image URI in task definition\
-Verify environment variables are set correctly
-
-Check IAM task role is assigned\
-Health check failing:
-
-Verify /health endpoint exists in your service\
-Check security group allows traffic on service ports\
-Parameter Store access issues:
-
-Verify parameter names match exactly (case-sensitive)\
-Check parameter exists in correct region
-
-
-API Gateway
-
-Create an HTTP API Gateway that connects to the internal Application Load Balancer, providing a public endpoint to access all microservices.
-
-Tasks:\
-Create a VPC Link for API Gateway to connect privately to the internal ALB\
-Create HTTP API Gateway\
-Create HTTP proxy integration to internal ALB (VPC Resource) via VPCLink\
-Create Cognito JWT Authorizer for authentication\
-Create API routes\
-API CORS configuration for frontend access\
-API endpoint testing
-
-
-The API Gateway will have three specific routes:
-
-GET /products → Product Service (public, no auth)\
-ANY /{proxy+} → All Services (authenticated, Cognito-authorizer required)\
-OPTIONS /{proxy+} → CORS preflight (public, no auth)
-
-Create VPC Link
-
-Create Security Group for VPC Link
-
-VPC Console → Security Groups → Create security group\
-Name: ecommerce-vpclink-sg\
-Description: "Security group for VPC Link to ALB"\
-VPC: Select ecommerce-vpc\
-Inbound rules:\
-Type: HTTP, Port: 80, Source: 0.0.0.0/0 (API Gateway traffic)\
-Type: HTTPS, Port: 443, Source: 0.0.0.0/0 (API Gateway traffic)\
-Outbound rules: All traffic (default)\
-Create security group
-
-VPC Link Configuration\
-API Gateway Console → VPC Links → Create VPC Link\
-VPC Link version: VPC Link for HTTP APIs (v2)\
-Name: ecommerce-vpc-link\
-VPC: Select Web App-vpc\
-Subnets: Select both private ECS subnets:\
-ecommerce-private-ecs-1\
-ecommerce-private-ecs-2\
-Security groups: Select ecommerce-vpclink-sg\
-Create VPC Link
-
-VPC Link creation takes 5-10 minutes. Wait for status to become "Available" before proceeding.
-
-Create HTTP API Gateway
-
-API Gateway Configuration\
-API Gateway Console → APIs → Create API\
-Choose: HTTP API → Build\
-API name: ecommerce-api\
-Next\
-Skip adding integrations - we'll configure these manually\
-Create\
-Go to your API → Stages → Create stage\
-Stage name: $default\
-Enable Auto-deploy\
-Create
-
-Create HTTP Integration
-
-ALB Integration over VPCLink (VPC Private Resource integration)\
-Create one integration that will be used by all routes:
-
-Go to your API → Develop → Integrations → Manage integrations → Create\
-Integration type: Private resource\
-Click Select Manually
-Target service: ALB/NLB\
-Load balancer: Select Web App-alb\
-Listener: HTTP:80\
-VPC Link: Select ecommerce-vpc-link\
-Create integration
-
-Create Cognito JWT Authorizer
-
-Cognito JWT Authorizer Configuration\
-Go to your API → Authorization → Authorizers → Create authorizer\
-Name: cognito-jwt-authorizer\
-Authorizer type: JWT\
-Identity source: $request.header.Authorization\
-Issuer URL: https://cognito-idp.(your-region).amazonaws.com/(user-pool-id)\
-Replace (your-region) and (user-pool-id) with your values or get this URL from Cognito -> User Pool -> App Client -> Quick Setup guide -> authority\
-Audience: (your-app-client-id)\
-Use the App Client ID from Module 3\
-Create authorizer
-
-
-Create API Routes
-
-Route 1: Public Products Route\
-Go to your API → Routes → Create route\
-Method: GET\
-Resource path: /products\
-Integration: Select the ALB Integration created above\
-Authorization: None\
-Create route
-
-Route 2: Authenticated Proxy Route\
-Create route\
-Method: ANY\
-Resource path: /{proxy+}\
-Integration: Select the ALB Integration created above\
-Authorization: JWT\
-Authorizer: Select cognito-jwt-authorizer\
-Create route
-
-Route 3: CORS Preflight Route\
-Create route\
-Method: OPTIONS\
-Resource path: /{proxy+}\
-Integration: Select the ALB Integration created above\
-Authorization: None\
-Create route
-
-Note:\
-All three routes use the same ALB integration\
-/products is public (no authentication required)\
-/{proxy+} requires JWT authentication for all other endpoints\
-OPTIONS /{proxy+} handles CORS preflight requests without authentication
-
-Configure CORS:
-
-Go to your API → CORS → Configure\
-Access-Control-Allow-Origin: * (or specify your frontend domain)\
-Access-Control-Allow-Headers: * (allows all headers - recommended for development)\
-Access-Control-Allow-Methods:\
-GET,POST,PUT,DELETE,OPTIONS
-
-Save
-
-Note: Using * for Access-Control-Allow-Headers prevents CORS preflight issues with custom headers like Authorization tokens.
-
-Test API Gateway
-
-Get API Gateway URL\
-Go to your API → Stages → $default\
-Copy the Invoke URL (e.g., https://xxxxxxxxxx.execute-api.(region).amazonaws.com)
-
-Test All Service Endpoints
-
-Test Public Products Endpoint
-
-curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/products
-
-Test Authorized Endpoints (Should Return 401):
-
-curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/cart\
-curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/users\
-curl https://xxxxxxxxxx.execute-api.(region).amazonaws.com/orders\
-# Expected: {"message":"Unauthorized"}
-
-
-Troubleshooting:
-
-CORS Errors:\
-If you see "Access-Control-Allow-Origin" errors, ensure CORS is configured with Access-Control-Allow-Headers: *\
-Verify OPTIONS routes are created for preflight requests\
-
-401 Unauthorized:\
-Verify Cognito User Pool ID in authorizer configuration\
-Ensure App Client ID matches in authorizer audience
-
-502 Bad Gateway:\
-Check VPC Link status\
-Verify internal ALB DNS name in integration URI\
-Ensure ALB target groups are healthy
-
-504 Gateway Timeout:\
-Check ECS service health\
-Verify ALB listener rules are configured correctly\
-Check VPCLink Security group (should allow HTTP/HTTPS from 0.0.0.0/0) and ALB Security group (should allow HTTP from VPC CIDR)
-
-We have configured:\
-Authentication: Public products endpoint, authenticated for other services\
-CORS Support: Dedicated OPTIONS route for preflight requests\
-Secure Connection: VPC Link ensures private communication between API gateway and ALB.\
-Flexible Access: Public product browsing, authenticated user actions
-
-Frontend-Backend Integration:
-
-Now that the API Gateway is deployed, update the React application with the API Gateway URL, rebuild, and redeploy to S3. This completes the frontend integration and makes all features fully functional.
-
-Tasks:
-
-Update frontend with the API Gateway URL\
-Rebuild and redeploy frontend to S3\
-Invalidate CloudFront cache\
-Test the fully integrated application
-
-Update frontend with API Gateway URL
-
-Navigate to frontend directory:\
-cd frontend/react-app
-
-Edit src/aws-config.js — update only the baseUrl field:
-
-const awsConfig = {\
-  Auth: {\
-    Cognito: {\
-      userPoolId: '(COGNITO_USER_POOL_ID)',       // Already set in Module 3\
-      userPoolClientId: '(COGNITO_CLIENT_ID)',    // Already set in Module 3\
-      loginWith: {\
-        email: true,\
-      },\
-    }\
-  },\
-  API: {\
-    baseUrl: '(API_GATEWAY_URL)'  // e.g., https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com\
-  }\
-};
-
-export default awsConfig;
-
-Rebuild and redeploy frontend to S3:
-
-npm run build\
-aws s3 sync build/ s3://(your-frontend-bucket-name) --delete --exclude "images/*"
-
-Next, Invalidate CloudFront Cache from AWS Console or using AWS CLI:
-
-Go to CloudFront Distribution -> Invalidations -> Create invalidation -> Object paths: /* -> Create invalidation
-
-Invalidation usually completes within 1 minute.
-
-
-Time to test the Fully Integrated Application:
-
-Open your CloudFront URL in a browser:
-
-https://(your-cloudfront-domain)
-
-Do  a test and see if the sign in, product listing, adding to cart, placing an order, order history etc. works.
-
-
-Notification and Integration (SNS and SQS):
-
-Set up event driven flows using Amazon SNS and SQS for order notifications and integration with 3rd party vendors.
-
-Note:
-
-Ideally for the email notification we should use Amazon SES (Simple Email Service) where we have the Lambda function subscription for SNS topic and Lambda triggers an email to the email id from the order event using SES. However by default SES service is in Sandbox mode in AWS account and it applies restriction on sending emails from un-verified sender. We have to ask AWS to move SES service out of SandBox and enable it for the Production use and this may take few days. Hence, we are going to send email directly to fixed email id using the Amazon SNS.
-
-
-Create SNS Topic
-
-SNS Topic Configuration\
-SNS Console → Topics → Create topic\
-Type: Standard\
-Name: ecommerce-order-events\
-Display name: eCommerce Order Events\
-Create topic\
-Note Topic ARN\
-Copy the Topic ARN (e.g., arn:aws:sns:(region):(account-id):ecommerce-order-events)\
-Save this ARN - we'll use it in Parameter Store
-
-Create SQS Queue for Logging:
-
-SQS Queue Configuration\
-SQS Console → Queues → Create queue\
-Type: Standard queue\
-Name: ecommerce-order-shipping\
-Create queue
-
-
-Configure SNS Subscriptions
-
-Email Subscription\
-Go to SNS topic → Subscriptions → Create subscription\
-Topic ARN: Select ecommerce-order-events\
-Protocol: Email\
-Endpoint: Enter your email address (e.g., admin@yourdomain.com)\
-Create subscription\
-Check your email for confirmation message\
-Click "Confirm subscription" link in the email\
-Verify status shows "Confirmed" in SNS console\
-SQS Subscription for Shipping\
-Create subscription\
-Topic ARN: Select ecommerce-order-events\
-Protocol: Amazon SQS\
-Endpoint: Enter the SQS queue ARN noted earlier\
-Create subscription\
-Verify status shows "Confirmed"\
-This should automatically update the SQS queue Policy to allow SQS:SendMessage action for SNS Topic.
-
-Go to SQS Queue -> Queue Policies and Verify.
-
-Subscription Summary\
-You now have two subscriptions:
-
-Email: Direct notifications to your email\
-SQS: Message for shipping vendor
-
-Update Parameter Store
-
-SNS Topic ARN Parameter\
-Systems Manager Console → Parameter Store → Create parameter\
-Name: /ecommerce/dev/sns/topic-arn\
-Type: String\
-Value: arn:aws:sns:(region):(account-id):ecommerce-order-events\
-Create parameter
-
-This parameter is already created and used by the order service to publish messages to SNS.
-
-Restart the Order Service to fetch SNS Topic ARN
-
-ECS Cluster -> Services -> Order Service -> Force new deployment\
-Wait until Order Service status changes to 1 Task Running\
-This will make sure that Order Service fetches SNS Topic ARN from SSM Parameter Store and publishes order event on to the topic.
-
-Test Notification Workflow
-
-Place an order through the frontend\
-Order service publishes to SNS topic\
-SNS sends email Check email for order notification\
-SNS also sends message to SQS queue for shipping. Verify messages in the SQS queue -> Send and receive message -> Poll for messages
-
-Custom Domain & SSL:
-
-Access application using Custom domain name and enable HTTPS with SSL certificate
-
-
-Prerequisites:
-
-A registered public domain name (can be registered via Route53 or use existing one).\
-Amazon Route 53 should be configured as DNS provider for the domain name.
-
-Route 53 Public Hosted Zone (pre-requisite)
-
-Route53 Console → Hosted zones → Create hosted zone\
-Domain name: yourdomain.com\
-Type: Public hosted zone\
-Create\
-Note the 4 nameservers (NS records)\
-Update nameservers at your domain registrar
-
-
-Request SSL Certificate in ACM:
-
-Request Certificate\
-Go to ACM Console → Switch to us-east-1 region\
-Request certificate → Request a public certificate\
-Domain names:\
-yourdomain.com\
-www.yourdomain.com\
-*.yourdomain.com (optional, for subdomains)\
-Validation method: DNS validation\
-Request\
-Validate Certificate\
-In ACM, click on your certificate\
-Click "Create records in Route53" button\
-This automatically adds CNAME records to your hosted zone\
-Wait for validation (usually 1-2 minutes)\
-Status should change to "Issued"
-
-
-Add alternate domain name for CloudFront Distribution:
-
-CloudFront Console → Your distribution → Edit\
-Settings:\
-Alternate domain names (CNAMEs): Add yourdomain.com and www.yourdomain.com\
-Custom SSL certificate: Select your ACM certificate\
-Save changes\
-Wait for deployment (5-10 minutes)
-
-Create Route53 Records:
-
-A Record for Top level domain:
-
-Route53 → Hosted zones → Your domain\
-Create record:\
-Record name: Leave empty (root domain)\
-Record type: A\
-Alias: Yes\
-Route traffic to: Alias to CloudFront distribution\
-Choose distribution: Select your CloudFront distribution\
-Routing policy: Simple routing\
-Create record\
-A Record for www:
-
-Create record:\
-Record name: www\
-Record type: A\
-Alias: Yes\
-Route traffic to: Alias to CloudFront distribution\
-Choose distribution: Select your CloudFront distribution\
-Create record
-
-Update Cognito Callback URLs:
-
-Cognito Console → User pools → your user pool\
-Applications → App client → Edit
-
-Hosted UI settings:\
-Add callback URLs: https://yourdomain.com, https://www.yourdomain.com\
-Add sign-out URLs: https://yourdomain.com, https://www.yourdomain.com\
-Save
-
-Finally, test the Application with Custom Domain:
-
-Open browser: https://yourdomain.com\
-Verify SSL certificate: Should show secure/valid certificate (green lock icon)
-
-Test all the website functionalities:\
-Browse products (should load from API)\
-Sign in/Sign up (Cognito authentication)\
-Add items to cart\
-Place test order\
-Check that all features work
-
-At this point, a production-ready ecommerce application on AWS with custom domain and SSL certificate should be successfully deployed.
 
