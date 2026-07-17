@@ -165,210 +165,194 @@ Note down the following configuration values from the console. You will need the
 * **Cognito Domain** (Found under **App integration** -> **Branding** -> **Domain**)
 
 
-  Frontend Deployment:
+  ### Step 10: Frontend Deployment
+Set up the infrastructure for the React frontend, configure it with the Cognito values, deploy it to Amazon S3, and serve it securely through Amazon CloudFront. This allows you to test the login and signup functionality early in the deployment process.
 
-  Set up the infrastructure for the React frontend, configure it with Cognito values, deploy it to S3 and access it through CloudFront. This allows to test login/signup functionality early.
+#### Key Tasks
+* **Create an S3 Bucket** to host the static frontend build assets.
+* **Create a CloudFront Distribution** pointing to the S3 bucket as its origin.
+* **Configure CloudFront** root documents and custom error pages for single-page app (SPA) routing.
+* **Configure and Build** the React application, then upload the build folder to S3.
+* **Test the live URL** to verify that login and signup workflows work correctly.
 
-  Tasks:\
-  -Create S3 bucket for hosting frontend build assets\
-  -Create CloudFront distribution with S3 origin\
-  -Configure CloudFront Root document and Custom Error Pages\
-  -Configure and Build React Application and Deploy to S3\
-  -Test login/signup functionality
 
 <img width="517" height="240" alt="CloudFront WebApp" src="https://github.com/user-attachments/assets/c3ab4f1f-c14c-49aa-8258-29eaeff48086" />
 
+### Step 11: Create the Amazon S3 Bucket
+1. Navigate to the **S3 Console**, select **Buckets**, and click **Create bucket**.
+2. Under **Bucket type**, choose **General Purpose**.
+3. Set the **Bucket name** to `web-app-bucket19` (or another globally unique name).
+4. Select `us-east-1` (or your preferred region) as the **AWS Region**.
+5. Keep **Block *all* public access** checked (CloudFront will access this bucket privately).
+6. Keep **Bucket Versioning** disabled.
+7. Under **Default encryption**, ensure **Server-side encryption with Amazon S3 managed keys (SSE-S3)** is enabled.
+8. Click **Create bucket**.
 
+### Step 12: Create the CloudFront Distribution
+1. Navigate to the **CloudFront Console**, select **Distributions**, and click **Create distribution**.
+2. Set the **Distribution name** to `Web App CloudFront`.
+3. Select **Single website or app** and click **Next**.
+4. For **Origin type**, choose **Amazon S3**.
+5. For **Origin domain**, select your newly created frontend S3 bucket from the list.
+6. Under **Origin access**, select **Origin access control settings (recommended)** to allow private S3 bucket access to CloudFront.
+7. Under **Cache behavior**, select **Use recommended cache settings** tailored to serving S3 content and click **Next**.
+8. Under **Web Application Firewall (WAF)**, choose **Do not enable security protections** for this setup.
+9. Click **Create distribution**.
 
-  S3 Bucket Configuration:\
-  S3 Console → Buckets → Create bucket -> General Purpose\
-  Bucket name: web-app-bucket19 (must be unique)\
-  Region: us-east-1 or your region (Ensure you're in the right AWS region for S3 console)\
-  Block all public access: Keep checked (CloudFront will access this bucket privately)\
-  Bucket versioning: Disable\
-  Encryption: Default - Enable (SSE-S3)\
-  Create bucket
+### Step 13: Configure Root Document and Custom Error Pages
+1. Select your new CloudFront distribution, go to the **General** tab, and click **Edit**.
+2. Update the **Default root object** field to `index.html` and click **Save changes**.
+3. Switch to the **Error pages** tab and click **Create custom error response**.
+4. Configure the custom error with the following settings to support single-page application (SPA) routing:
+   * **HTTP error code:** `403: Forbidden`
+   * **Customize error response:** Select `Yes`
+   * **Response page path:** `/index.html`
+   * **HTTP response code:** `200: OK`
+5. Click **Create**
 
-  CloudFront Distribution configuration:
-
-  CloudFront Console → Distributions → Create distribution\
-  Distribution name: Web App CloudFront\
-  Distribution type: Single website or app -> Next\
-  Origin type: Amazon S3\
-  Origin: Select your frontend s3 bucket\
-  Settings: Allow private S3 bucket access to CloudFront - Recommended\
-  Settings: Use recommended cache settings tailored to serving S3 content -> Next\
-  Enable Security: Select "Do not enable security protections"\
-  Create distribution
-
-  Configure CloudFront Root document and Custom Error Pages:\
-  Go to your CloudFront distribution -> General -> Edit -> Update Default root object: index.html -> Save changes\
-  Error pages → Create custom error response\
-  HTTP error code: 403\
-  Customize error response: Yes\
-  Response page path: /index.html\
-  HTTP response code: 200\
-  Create
-  
-  Repeat for HTTP error code 404
+6. Repeat for HTTP error code 404
 
   Save these values:
 
   CloudFront Distribution ID (e.g., E30JU8N49IUDRS)\
   CloudFront Domain Name (e.g., d1234567890.cloudfront.net)
 
+### Step 14: Configure and Build the React Application
+1. Open your terminal and navigate to the frontend directory on your local machine:
+   ```bash
+   cd frontend/react-app
+   ```
+2. Open the configuration file located at `src/aws-config.js` and update it with the Cognito values you saved earlier:
+   ```javascript
+   const awsConfig = {
+     Auth: {
+       Cognito: {
+         userPoolId: '<COGNITO_USER_POOL_ID>',       // Replace with your User Pool ID
+         userPoolClientId: '<COGNITO_CLIENT_ID>',    // Replace with your App Client ID
+         loginWith: {
+           email: true,
+         },
+       }
+     },
+     API: {
+       baseUrl: ''  // Leave empty for now; this will be updated later
+     }
+   };
+   
+   export default awsConfig;
+   ```
 
-  Configure and Build React Application and Deploy to S3:
+### Step 15: Compile and Deploy Frontend to S3
+1. Install the project dependencies and compile the production build:
+   ```bash
+   npm install
+   npm run build
+   ```
+2. Deploy the compiled static assets to your S3 bucket using the AWS CLI:
+   ```bash
+   aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
+   ```
 
-  Navigate to frontend directory in your local machine with the below command:\
-  cd frontend/react-app
+### Step 16: Update Cognito Callback URLs
+1. Navigate to the **Cognito Console**, select **User pools**, and click on your **Web App User Pool**.
+2. Go to the **App integration** tab, scroll down to **App clients**, and click on your specific app client.
+3. Locate the **Login pages** section and click **Edit**.
+4. Configure the redirection endpoints for your application:
+   * **Allowed callback URLs:** Add `https://<your-cloudfront-domain>`
+   * **Allowed sign-out URLs:** Add `https://<your-cloudfront-domain>`
+5. Click **Save changes**
 
-  Next, edit src/aws-config.js and replace the user pool and cognito client ID values copied earlier:
+  ### Step 17: Test Login & Signup Functionality
+1. Open your browser and navigate to your secure CloudFront endpoint: `https://<your-cloudfront-domain>`
+2. Test the client-side authentication loops to verify the baseline setup:
+   * **Working Features:** User sign-up (via email), one-time email verification workflows, and seamless session log-in/log-out.
+   * **Pending Features:** Product catalogs, shopping cart modifications, and checkout structures will throw errors until you finish linking the API Gateway and backend nodes.
 
-      const awsConfig = {
-        Auth: {
-          Cognito: {
-            userPoolId: '<COGNITO_USER_POOL_ID>',       // e.g., ap-south-1_xxxxxxxxx
-            userPoolClientId: '<COGNITO_CLIENT_ID>',    // e.g., 1a2b3c4d5e6f7g8h9i0j1k2l3m
-            loginWith: {
-              email: true,
-            },
-          }
-        },
-        API: {
-          baseUrl: ''  // Leave empty for now, will be updated later
-        }
-      };
-      
-      export default awsConfig;
+### Step 18: Initialize the Data Storage Layer
 
-  Build and Deploy React frontend:
+#### Populate Product Imagery (S3)
+1. Drop into the data utility folder via your local terminal and execute the pre-packaged imagery payload sync:
+   ```bash
+   cd data
+   bash upload-images-to-s3.sh <your-bucket-name>
+   ```
+2. Verify that asset routing functions over the edge network by curling or opening a random product asset link directly:
+   * *Example:* `https://<your-cloudfront-domain>/images/products/prod-001.jpg`
 
-  Install dependencies:\
-  npm install\
-  npm build
+#### Configure NoSQL Schema (Amazon DynamoDB)
+1. Open the **DynamoDB Console**, select **Tables**, and click **Create table** to spin up the **Products Inventory**:
+   * **Table name:** `ecommerce-products`
+   * **Partition key:** `product_id` (Type: `String`)
+   * **Sort key:** Leave blank
+   * **Table class:** `DynamoDB Standard`
+   * **Capacity mode:** `On-demand`
+   * Click **Create table**.
+2. Click **Create table** again to spin up the stateful persistent **User Carts**:
+   * **Table name:** `ecommerce-cart`
+   * **Partition key:** `user_id` (Type: `String`)
+   * **Sort key:** Leave blank
+   * **Table class:** `DynamoDB Standard`
+   * **Capacity mode:** `On-demand`
+   * Click **Create table**.
 
-  Deploy frontend build to S3:
+#### Seed Database Mock Records
+1. From the local `/data` directory, patch the static assets with your custom asset cache location:
+   ```bash
+   bash update-product-image-urls.sh <your-cloudfront-domain>
+   ```
+2. Feed the normalized mock data arrays directly up into your live DynamoDB environment:
+   ```bash
+   bash load-products.sh <your-aws-region>
+   ```
+3. Navigate to **DynamoDB** -> **Tables** -> `ecommerce-products` in the AWS console and click **Explore table items** to confirm that all 20 structural data assets successfully populated with targeted image links.
 
-  aws s3 sync build/ s3://<your-frontend-bucket-name> --delete --exclude "images/*"
+### Step 19: Provision Relational Database Storage (Amazon RDS - PostgreSQL)
 
-  Update Cognito Callback URL
-  
-  Cognito Console → User pools → Web App User Pool\
-  App integration tab → App clients → Click your app client\
-  Edit Login pages settings:\
-  Allowed callback URLs: Add https://(your-cloudfront-domain)\
-  Allowed sign-out URLs: Add https://(your-cloudfront-domain)\
-  Save changes
+#### 1. Define the DB Subnet Group
+1. Open the **RDS Console**, click **Subnet groups** from the left navigation panel, and click **Create DB subnet group**.
+2. Name the group `ecommerce-db` and set the description to `"Subnet group for web app RDS"`.
+3. Choose `Web App-vpc` from the dropdown list.
+4. Under **Add subnets**, pick your target Availability Zones (e.g., `us-east-1a` and `us-east-1b`) and carefully check the checkboxes corresponding to your two isolated **private database subnets**.
+5. Click **Create**.
 
+#### 2. Establish Network Guardrails (Security Groups)
+1. Head back to the **VPC Console**, go to **Security Groups**, and choose **Create security group**.
+2. Set the configuration details as follows:
+   * **Name:** `ecommerce-rds-sg`
+   * **Description:** `"Security group for RDS PostgreSQL"`
+   * **VPC:** `Web App-vpc`
+3. Click **Add rule** under the **Inbound rules** table block:
+   * **Type:** `PostgreSQL` (Port `5432`)
+   * **Source:** Select `Custom` and type `10.10.0.0/16` (Your main VPC CIDR Block)
+   * **Description:** `"Allow PostgreSQL from VPC"`
+4. Keep the **Outbound rules** set to their standard defaults (Allow all traffic) and click **Create security group**.
 
-  Test Login/Signup:
+#### 3. Spin up the Relational DB Instance
+1. Head over to the **RDS Console**, select **Databases**, and choose **Create database**.
+2. Customize the database wizard parameters precisely:
+   * **Database creation method:** Select `Full configuration`
+   * **Engine type:** Select `PostgreSQL`
+   * **Engine version:** Select the stable release `PostgreSQL 18.3-R1` or latest
+   * **Templates:** Choose `Free Tier` *(this defaults Availability and Durability to Single-AZ)*
+3. Complete the **Settings** configuration panel:
+   * **DB instance identifier:** `ecommercedb-instance`
+   * **Master username:** `postgres`
+   * **Master password:** *Define a strong password and save it securely in your password vault.*
+   * **Database authentication:** Select `Password authentication`
+4. Define the physical system resource footprint and networking:
+   * **DB instance class:** Choose `Burstable classes` -> `db.t4g.micro`
+   * **VPC:** Select `Web App-vpc`
+   * **DB subnet group:** Select your newly generated data group `Web App-subnet-db-private3`
+   * **Public access:** Select `No`
+   * **VPC security group:** Choose `Choose existing` -> Attach `ecommerce-rds-sg` *(Ensure you remove the 'default' group)*
+   * **Availability Zone:** Bind to your primary zone (e.g., `us-east-1a`)
+5. Under **Monitoring**, uncheck the **Enable Performance Insights** toggle box.
+6. Open the **Additional configuration** chevron at the very bottom *(Crucial Step)*:
+   * **Initial database name:** Type `ecommercedb`
+   * **Backup:** Uncheck **Enable automated backups**
+   * **Encryption:** Uncheck **Enable encryption**
+7. Click **Create database**. *The initial compilation run will take roughly 5 to 10 minutes to spin up clean endpoints.*
 
-  Try opening your CloudFront URL in a browser -->  https://(your-cloudfront-domain)
-
-  Working as expected --> Sign up with email, Email verification, and Login / logout\
-  Not yet working --> Product listing, Cart, and Orders (Frontend-Backend configuration required)
-
-  Data Storage Layer:
-
-  Upload Product Images to S3 bucket using script:\
-  cd data\
-  bash upload-images-to-s3.sh <your-bucket-name>
-
-  Check that the images are publicly accessible over the internet using CloudFront URL --> Example: https://dhzk1s0exnne1.cloudfront.net/images/products/prod-001.jpg
-
-  DynamoDB:
-
-  Create Products Table\
-  DynamoDB Console → Tables → Create table\
-  Table name: ecommerce-products\
-  Partition key: product_id (String)\
-  Sort key: Leave empty (no sort key needed)\
-  Table class: DynamoDB Standard\
-  Capacity mode: On-demand\
-  Create table
-
-
-  Create Cart Table\
-  DynamoDB Console → Tables → Create table\
-  Table name: ecommerce-cart\
-  Partition key: user_id (String)\
-  Sort key: Leave empty (no sort key needed)\
-  Table class: DynamoDB Standard\
-  Capacity mode: On-demand\
-  Create table
-
-
-  Load Sample Products Data:\
-  cd data\
-  bash update-product-image-urls.sh (cloudfront URL)
-
-  Load Products into DynamoDB:\
-  bash load-products.sh (your-region)
-
-  Verify that DynamoDB table is updated:
-
-  Go to DynamoDB -> ecommerce_products table and check if there are 20 products data with updated image URLs.
-
-  RDS - PostgreSQL Database:
-
-  Create DB Subnet Group\
-  RDS Console → Subnet groups → Create DB subnet group\
-  Name: ecommerce-db\
-  Description: "Subnet group for web app RDS"\
-  VPC: Select Web App-vpc\
-  Add subnets:\
-  Select both availability zones (us-east-1a, us-east-1b)\
-  Select both private database subnets
-  Create
-
-  Create Security Group for RDS\
-  VPC Console → Security Groups → Create security group\
-  Name: ecommerce-rds-sg\
-  Description: "Security group for RDS PostgreSQL"\
-  VPC: Select Web App-vpc\
-  Inbound rules:\
-  Type: PostgreSQL\
-  Port: 5432\
-  Source: Custom - 10.10.0.0/16 (VPC CIDR)\
-  Description: "Allow PostgreSQL from VPC"\
-  Outbound rules: Keep default (all traffic)\
-  Create
-
-
-Create RDS Instance
-
-RDS Console → Databases → Create database\
-Engine options:\
-Engine type: PostgreSQL\
-Choose a database creation method: Full configuration\
-Templates: Free Tier
-Availability and durability: Single-AZ DB instance deployment (1 instance)
-Engine version: PostgreSQL 18.3R1
-
-Settings:\
-  DB instance identifier: ecommercedb-instance\
-  Master username: postgres\
-  Master password: (create a password - ensure to save it!)\
-  Database authentication: Password authentication\
-  Instance configuration:\
-  DB instance class: Burstable classes - db.t4g.micro
-  
-Connectivity:\
-  VPC: Web App-vpc\
-  DB subnet group: Web App-subnet-db-private3\
-  Public access: No\
-  VPC security group: Choose existing - ecommerce-rds-sg\
-  Availability Zone: Choose first AZ
-
-Monitoring:\
-  Uncheck "Enable Performance Insights"
-  
-Additional configuration:\
-  IMPORTANT: Initial database name: ecommercedb\
-  Uncheck "Enable automated backups"\
-  Uncheck "Enable encryption"\
-  Create database (takes 5-10 minutes)
 
 
 Parameter Store - Configuration Management:
