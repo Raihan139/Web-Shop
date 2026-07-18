@@ -93,13 +93,17 @@ This production-ready, cloud-native e-commerce electronics platform leverages mu
 5. Enter `10.10.0.0/24` for the **IPv4 CIDR block** and click **Create subnet**.
 
 
-    Repeat for the rest of the subnets below:
+    **Repeat for the rest of the subnets below:**
 
-    Public	      Web App-subnet-public2	       CIDR 10.10.1.0/24	Region us-east-1a	 Purpose  NAT Gateway, Bastion host (For HA setup if required)
-    Private ECS	Web App-subnet-ecs-private1    CIDR	10.10.10.0/24	Region us-east-1a	 Purpose  ECS Services, Internal ALB, APIGW VPCLink
-    Private ECS	Web App-subnet-ecs-private2	 CIDR 10.10.11.0/24	Region us-east-1a	 Purpose  ECS Services, Internal ALB, APIGW VPCLink
-    Private DB	   Web App-subnet-db-private3	    CIDR 10.10.20.0/24	Region us-east-1a	 Purpose  RDS Primary
-    Private DB	   Web App-subnet-db-private4	    CIDR 10.10.21.0/24	Region us-east-1a	 Purpose  RDS Standby (For HA setup if required)
+   
+| Type | Subnet Name | CIDR Block | Region / AZ | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| Public | Web App-subnet-public2 | `10.10.1.0/24` | us-east-1a | NAT Gateway, Bastion host (For HA setup if required) |
+| Private ECS | Web App-subnet-ecs-private1 | `10.10.10.0/24` | us-east-1a | ECS Services, Internal ALB, APIGW VPCLink |
+| Private ECS | Web App-subnet-ecs-private2 | `10.10.11.0/24` | us-east-1a | ECS Services, Internal ALB, APIGW VPCLink |
+| Private DB | Web App-subnet-db-private3 | `10.10.20.0/24` | us-east-1a | RDS Primary |
+| Private DB | Web App-subnet-db-private4 | `10.10.21.0/24` | us-east-1a | RDS Standby (For HA setup if required) |
+
 
 
   ### Step 4: Create a NAT Gateway
