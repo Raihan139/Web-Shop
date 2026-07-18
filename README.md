@@ -165,7 +165,7 @@ Note down the following configuration values from the console. You will need the
 * **Cognito Domain** (Found under **App integration** -> **Branding** -> **Domain**)
 
 
-  ### Step 10: Frontend Deployment
+### Step 10: Frontend Deployment
 Set up the infrastructure for the React frontend, configure it with the Cognito values, deploy it to Amazon S3, and serve it securely through Amazon CloudFront. This allows you to test the login and signup functionality early in the deployment process.
 
 #### Key Tasks
@@ -699,7 +699,7 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
 2. Complete the standard metadata options:
    * **Name:** `web-app-vpclink-sg`
    * **Description:** `"Security group for VPC Link to ALB"`
-   * **VPC:** Select your primary network `Web App-vpc` (or `ecommerce-vpc`)
+   * **VPC:** Select your primary network `Web App-vpc`
 3. Create two inbound rules to permit proxy traffic:
    * **HTTP** | Port `80` | **Source:** `0.0.0.0/0`
    * **HTTPS** | Port `443` | **Source:** `0.0.0.0/0`
@@ -711,7 +711,7 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
 3. Configure the link parameters:
    * **Name:** `web-app-vpc-link`
    * **VPC:** Select `Web App-vpc`
-   * **Subnets:** Select your **two private ECS subnets** (`web-appe-private-ecs-1` & `web-app-private-ecs-2`)
+   * **Subnets:** Select your **two private ECS subnets** (`web-app-private-ecs-1` & `web-app-private-ecs-2`)
    * **Security groups:** Attach your newly generated `web-app-vpclink-sg`
 4. Click **Create**. 
 > ⏳ **Note:** Establishing a VPC Link takes between 5 to 10 minutes. Wait until the dashboard status turns green and reads **Available** before starting the next configuration phase.
@@ -737,7 +737,7 @@ Provision an Amazon API Gateway (HTTP API) to link with your internal Applicatio
    * **Integration type:** `Private resource`
    * **Method mapping selection:** Click **Select Manually**
    * **Target service:** `ALB/NLB`
-   * **Load balancer:** Select your internal resource engine `Web App-alb` (or `Web-App-LB`)
+   * **Load balancer:** Select your internal resource engine `Web App-ALB`
    * **Listener:** Choose `HTTP:80`
    * **VPC Link:** Select `web-app-vpc-link`
 3. Click **Create integration**. This unified backend bridge will service your downstream path layouts.
@@ -814,7 +814,7 @@ curl https://xxxxxxxxxx.execute-api.<your-region>.amazonaws.com/orders
 ### Step 40: API Gateway Troubleshooting Matrix
 If your public API traffic encounters routing errors or drops, trace the symptoms using this baseline failure matrix:
 
-#### 1. CORS Preflight Failures (`Access-Control-Allow-Origin` Drops)
+#### 1. CORS Failuers:
 * **Verify Header Flags:** Ensure your API Gateway CORS setup includes `Access-Control-Allow-Headers: *` explicitly.
 * **Audit Preflight Targets:** Double-check that your `OPTIONS /{proxy+}` routing target exists and uses the shared, open internal ALB integration without authentication profiles attached.
 
@@ -830,7 +830,7 @@ If your public API traffic encounters routing errors or drops, trace the symptom
 #### 4. Upstream Dropped Packets (`504 Gateway Timeout`)
 * **Verify Compute States:** Open the ECS cluster console and confirm that tasks are not crashing or looping during execution.
 * **Audit Network Access Group Boundaries:** 
-  * The `ecommerce-vpclink-sg` security group must explicitly accept inbound HTTP/HTTPS traffic from `0.0.0.0/0`.
+  * The `web-app-vpclink-sg` security group must explicitly accept inbound HTTP/HTTPS traffic from `0.0.0.0/0`.
   * The internal `web-ALB-SG` load balancer security group must explicitly accept inbound HTTP traffic originating from your full VPC CIDR range (`10.10.0.0/16`).
 
 ---
@@ -896,16 +896,16 @@ Implement a decoupled, event-driven messaging layer to broadcast transaction upd
 1. Open the **Amazon SNS Console**, click **Topics** on the left menu panel, and click **Create topic**.
 2. Configure the core structural settings:
    * **Type:** Select `Standard`
-   * **Name:** `ecommerce-order-events`
-   * **Display name:** `eCommerce Order Events`
+   * **Name:** `web-app-order-events`
+   * **Display name:** `Web App Order Events`
 3. Click **Create topic**.
-4. Copy the unique **Topic ARN** from the details dashboard (e.g., `arn:aws:sns:<your-region>:<your-account-id>:ecommerce-order-events`) and save it to your notepad.
+4. Copy the unique **Topic ARN** from the details dashboard (e.g., `arn:aws:sns:<your-region>:<your-account-id>:web-app-order-events`) and save it to your notepad.
 
 #### 2. Provision the SQS Vendor Processing Queue
 1. Navigate to the **Amazon SQS Console**, click **Queues** on the left menu panel, and click **Create queue**.
 2. Configure the messaging line settings:
    * **Type:** Select `Standard`
-   * **Name:** `ecommerce-order-shipping`
+   * **Name:** `web-app-order-shipping`
 3. Click **Create queue**.
 4. Copy the **Queue ARN** string from the configuration page summaries block.
 
@@ -914,7 +914,7 @@ Implement a decoupled, event-driven messaging layer to broadcast transaction upd
 ### Step 44: Link Messaging Subscriptions
 
 #### 1. Attach the Administrative Email Pipeline
-1. Return to your `ecommerce-order-events` topic dashboard, find the **Subscriptions** tab, and click **Create subscription**.
+1. Return to your `web-app-order-events` topic dashboard, find the **Subscriptions** tab, and click **Create subscription**.
 2. Complete the communication parameters:
    * **Protocol:** Select `Email`
    * **Endpoint:** Provide your personal email account address (e.g., `admin@yourdomain.com`)
@@ -924,7 +924,7 @@ Implement a decoupled, event-driven messaging layer to broadcast transaction upd
 #### 2. Attach the SQS Fulfillment Pipeline
 1. Click **Create subscription** inside your SNS topic panel again to hook up your shipping infrastructure:
    * **Protocol:** Select `Amazon SQS`
-   * **Endpoint:** Choose or paste your target `ecommerce-order-shipping` Queue ARN
+   * **Endpoint:** Choose or paste your target `web-app-order-shipping` Queue ARN
 2. Click **Create subscription**.
 3. *Verification Step:* This direct mapping automatically patches the SQS Queue Access Policy with the explicit `SQS:SendMessage` condition rules required for SNS to push events into it. You can check this by reviewing the **Access policy** JSON block under your SQS settings.
 
@@ -937,12 +937,12 @@ Implement a decoupled, event-driven messaging layer to broadcast transaction upd
 2. Register the routing location so the order microservice can locate the notification channel:
    * **Name:** `/ecommerce/dev/sns/topic-arn`
    * **Type:** `String`
-   * **Value:** Paste your copied `arn:aws:sns:<your-region>:<your-account-id>:ecommerce-order-events` payload
+   * **Value:** Paste your copied `arn:aws:sns:<your-region>:<your-account-id>:web-app-order-events` payload
 3. Click **Create parameter**.
 
 #### 2. Perform an In-Place Service Refresh
 Because the order container instances only query the Parameter Store during their boot sequence, you must force a cluster update to inject the new SNS credentials:
-1. Navigate to the **Amazon ECS Console**, choose your cluster, and select the `ecommerce-order-service` item block.
+1. Navigate to the **Amazon ECS Console**, choose your cluster, and select the `web-app-order-service` item block.
 2. Click **Update service** (or **Deploy** dropdown options) and check the **Force new deployment** checkbox toggle.
 3. Click **Update** and wait until the cluster provisions a new healthy task container while cleanly draining old execution instances.
 
